@@ -192,7 +192,7 @@ textarea.inp{resize:vertical;min-height:70px}
 .img-obt:hover:not(:disabled){border-color:var(--pur-m);background:var(--pur-l)}
 .img-obt.ok{border-color:var(--grn);background:var(--grn-l)}
 .img-obt.bad{border-color:var(--red);background:var(--red-l)}
-.img-obt img{width:100%;height:110px;object-fit:cover;border-radius:4px;display:block}
+.img-obt img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px;display:block}
 .img-obt .img-lbl{font-size:12px;text-align:center;margin-top:5px;color:var(--tx2);font-weight:500}
 
 /* listen sub-type badge */
@@ -1422,9 +1422,8 @@ function renderFill(q){
   }else{
     sentenceHtml=esc(q.prompt||"")+` <input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="this.style.color=(this.value?'var(--pur)':'')">`;
   }
-  const hintLen=`${maxLen} chữ cái`;
   return `<div class="fill-sentence">${sentenceHtml}</div>
-    <div class="hint-lbl">💡 ${hintLen} — Gõ thẳng vào chỗ trống${q.extra?` · <em>${esc(q.extra)}</em>`:""}</div>
+    ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
     <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Kiểm tra</button>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
@@ -1598,7 +1597,7 @@ function renderListenFill(q){
     </button>
   </div>
   <div class="fill-sentence">${sentenceHtml}</div>
-  <div class="hint-lbl">💡 ${maxLen} chữ cái${q.extra?` · <em>${esc(q.extra)}</em>`:""}</div>
+  ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
   <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Kiểm tra</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
