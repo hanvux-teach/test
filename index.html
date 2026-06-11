@@ -1418,9 +1418,15 @@ function renderFill(q){
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="this.style.color=(this.value?'var(--pur)':'')">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+  this.value=this.value.slice(0,${maxLen});
+  this.style.color=(this.value?'var(--pur)':'');
+">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=esc(q.prompt||"")+` <input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="this.style.color=(this.value?'var(--pur)':'')">`;
+    sentenceHtml=esc(q.prompt||"")+` <input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+  this.value=this.value.slice(0,${maxLen});
+  this.style.color=(this.value?'var(--pur)':'');
+">`;
   }
   return `<div class="fill-sentence">${sentenceHtml}</div>
     ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
