@@ -229,23 +229,36 @@ textarea.inp{resize:vertical;min-height:70px}
 .obt-multi.ok-dim .chk{background:var(--amb);border-color:var(--amb);color:#fff}
  
 /* drag-fill word box */
-.drag-passage{font-size:17px;font-weight:500;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:14px;line-height:2.4;word-break:break-word}
-.drag-blank{display:inline-block;min-width:90px;width:90px;height:32px;border:none;border-bottom:2.5px solid var(--pur);background:transparent;vertical-align:middle;text-align:center;font-size:15px;font-weight:700;color:var(--pur-d);border-radius:0;cursor:default;transition:.15s}
-.drag-blank.drag-over{background:var(--pur-l);border-radius:4px}
-.drag-blank.filled{background:var(--pur-l);border-radius:4px;border-bottom-color:var(--pur-d)}
-.drag-blank.ok{background:var(--grn-l);border-bottom-color:var(--grn);color:var(--grn)}
-.drag-blank.bad{background:var(--red-l);border-bottom-color:var(--red);color:var(--red)}
-.drag-wordbox{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--surf2);border-radius:var(--rs);margin-bottom:12px;min-height:50px}
-.drag-chip{padding:7px 14px;background:var(--surf);border:1.5px solid var(--bord2);border-radius:20px;cursor:grab;font-size:14px;font-weight:600;color:var(--tx);transition:.15s;user-select:none}
-.drag-chip:hover{background:var(--pur-l);border-color:var(--pur-m)}
-.drag-chip.used{opacity:.35;cursor:default;pointer-events:none}
-.drag-chip.dragging{opacity:.5}
+.df-passage{font-size:17px;font-weight:500;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:14px;line-height:2.4;word-break:break-word}
+.df-blank{display:inline-block;min-width:90px;width:90px;height:32px;border:none;border-bottom:2.5px solid var(--pur);background:transparent;vertical-align:middle;text-align:center;font-size:15px;font-weight:700;color:var(--pur-d);border-radius:0;cursor:pointer;transition:.15s}
+.df-blank.drag-over{background:var(--pur-l);border-radius:4px}
+.df-blank.filled{background:var(--pur-l);border-radius:4px;border-bottom-color:var(--pur-d)}
+.df-blank.ok{background:var(--grn-l);border-bottom-color:var(--grn);color:var(--grn)}
+.df-blank.bad{background:var(--red-l);border-bottom-color:var(--red);color:var(--red)}
+.df-wordbox{display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--surf2);border-radius:var(--rs);margin-bottom:12px;min-height:50px}
+.df-chip{padding:7px 14px;background:var(--surf);border:1.5px solid var(--bord2);border-radius:20px;cursor:grab;font-size:14px;font-weight:600;color:var(--tx);transition:.15s;user-select:none}
+.df-chip:hover{background:var(--pur-l);border-color:var(--pur-m)}
+.df-chip.used{opacity:.35;cursor:default;pointer-events:none}
+.df-chip.dragging{opacity:.5}
  
 /* img-pick */
 .img-pick-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:14px}
 .img-pick-img{width:100%;max-width:340px;border-radius:var(--r);border:2px solid var(--bord);object-fit:cover;max-height:220px}
 .img-pick-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
  
+
+/* reading passage */
+.rp-passage{background:var(--surf2);border:1px solid var(--bord);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;font-size:15px;line-height:1.8;color:var(--tx)}
+.rp-passage-title{font-size:12px;font-weight:700;color:var(--pur-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.rp-passage-body{white-space:pre-wrap;word-break:break-word}
+.rp-qnum{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--pur);color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:6px;flex-shrink:0}
+.rp-qblock{border:1.5px solid var(--bord);border-radius:var(--rs);padding:14px 16px;margin-bottom:10px;background:var(--surf)}
+.rp-qtitle{font-size:14px;font-weight:600;margin-bottom:10px;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
+.rp-sticky{position:sticky;top:0;z-index:10;background:var(--surf);border-bottom:1px solid var(--bord);padding:8px 12px;margin:-20px -20px 16px;display:flex;align-items:center;justify-content:space-between;border-radius:var(--r) var(--r) 0 0}
+.rp-prog-text{font-size:12px;color:var(--tx2);font-weight:500}
+.rp-sub-q{border:1px solid var(--bord);border-radius:var(--rs);padding:12px;margin-bottom:10px;background:var(--surf2)}
+.rp-sub-q-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rp-sub-q-num{font-size:12px;font-weight:700;color:var(--pur-d)}
 /* responsive */
 @media(max-width:500px){
   .opts,.phonopts,.tfopts,.img-opts,.img-pick-opts{grid-template-columns:1fr}
@@ -254,121 +267,69 @@ textarea.inp{resize:vertical;min-height:70px}
 }
 </style>
 </head>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  where
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
- 
-const firebaseConfig = {
-  apiKey: "AIzaSyDE-8cAVHy2hS_B2DbaQ0dmg04Qbe1N3xM",
-  authDomain: "english-practice-3.firebaseapp.com",
-  projectId: "english-practice-3",
-  storageBucket: "english-practice-3.firebasestorage.app",
-  messagingSenderId: "1093845301216",
-  appId: "1:1093845301216:web:f62cac1fb9e92fda1fdd85"
-};
- 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
- 
-window.CLOUD_QS = [];
- 
-console.log("🔥 Firebase connected");
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  // Dùng bản "compat" SDK (script thường, KHÔNG phải type="module")
+  // => chạy được kể cả khi mở file trực tiếp bằng file:// (double-click),
+  //    không bắt buộc phải chạy qua server/localhost/GitHub Pages nữa.
 
-onSnapshot(
-  collection(db,"questions"),
-  snap => {
+  const firebaseConfig = {
+    apiKey: "AIzaSyDE-8cAVHy2hS_B2DbaQ0dmg04Qbe1N3xM",
+    authDomain: "english-practice-3.firebaseapp.com",
+    projectId: "english-practice-3",
+    storageBucket: "english-practice-3.firebasestorage.app",
+    messagingSenderId: "1093845301216",
+    appId: "1:1093845301216:web:f62cac1fb9e92fda1fdd85"
+  };
 
-    window.CLOUD_QS = snap.docs.map(d => ({
-      firestoreId: d.id,
-      ...d.data()
-    }));
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    console.log(
-      "Cloud questions:",
-      window.CLOUD_QS.length
-    );
-  }
-);
-window.CLOUD_TOPICS = [];
-onSnapshot(
-  collection(db,"topics"),
-  snap => {
+  console.log("🔥 Firebase connected");
 
-    window.CLOUD_TOPICS =
-      snap.docs.map(d => ({
-        firestoreId:d.id,
-        ...d.data()
-      }));
+  window.CLOUD_QS = [];
+  db.collection("questions").onSnapshot(snap => {
+    window.CLOUD_QS = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+    console.log("Cloud questions:", window.CLOUD_QS.length);
+  }, err => console.error("questions onSnapshot error:", err));
 
-    console.log(
-      "Cloud topics:",
-      window.CLOUD_TOPICS.length
-    );
-    renderTopicGrid?.();
-  }
-);
-  
-window.CLOUD_STUDENTS = [];
-onSnapshot(
-  collection(db,"students"),
-  snap => {
+  window.CLOUD_TOPICS = [];
+  db.collection("topics").onSnapshot(snap => {
+    window.CLOUD_TOPICS = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+    console.log("Cloud topics:", window.CLOUD_TOPICS.length);
+    if (typeof renderTopicGrid === "function") renderTopicGrid();
+  }, err => console.error("topics onSnapshot error:", err));
 
-    window.CLOUD_STUDENTS =
-      snap.docs.map(d => ({
-        firestoreId:d.id,
-        ...d.data()
-      }));
+  window.CLOUD_STUDENTS = [];
+  db.collection("students").onSnapshot(snap => {
+    window.CLOUD_STUDENTS = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+    console.log("Cloud students:", window.CLOUD_STUDENTS.length);
+    if (typeof populateStudentSel === "function") populateStudentSel();
+  }, err => console.error("students onSnapshot error:", err));
 
-    console.log(
-      "Cloud students:",
-      window.CLOUD_STUDENTS.length
-    );
+  window.CLOUD_SCORES = [];
+  db.collection("scores").onSnapshot(snap => {
+    window.CLOUD_SCORES = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+    console.log("Cloud scores:", window.CLOUD_SCORES.length);
+    if (typeof renderStats === "function") renderStats();
+  }, err => console.error("scores onSnapshot error:", err));
 
-    populateStudentSel();
-
-  }
-);
-
-window.CLOUD_SCORES = [];
-onSnapshot(
-  collection(db,"scores"),
-  snap => {
-
-    window.CLOUD_SCORES =
-      snap.docs.map(d => ({
-        firestoreId:d.id,
-        ...d.data()
-      }));
-
-    console.log(
-      "Cloud scores:",
-      CLOUD_SCORES.length
-    );
-    renderStats?.();
-  }
-);
-window.db = db;
-window.fb = {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot
-};
-
+  window.db = db;
+  // Wrapper giữ nguyên chữ ký hàm kiểu modular SDK (v9+) mà phần code phía dưới
+  // đang gọi (window.fb.addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDocs...)
+  // nên KHÔNG cần sửa gì thêm ở hơn 2000 dòng code còn lại.
+  window.fb = {
+    collection: (dbRef, name) => dbRef.collection(name),
+    doc: (dbRef, name, id) => dbRef.collection(name).doc(id),
+    addDoc: (colRef, data) => colRef.add(data),
+    updateDoc: (docRef, data) => docRef.update(data),
+    deleteDoc: (docRef) => docRef.delete(),
+    getDocs: (ref) => ref.get(),
+    onSnapshot: (ref, cb) => ref.onSnapshot(cb)
+  };
+})();
 </script>
 <body>
 <div class="app">
@@ -457,8 +418,9 @@ window.fb = {
           <option value="">Tất cả dạng</option>
           <option>mcq</option><option>fill</option><option>arrange</option>
           <option>phonics</option><option>listen</option><option>listen-tf</option><option>listen-fill</option>
-          <option>tf</option><option>odd</option><option>img-mcq</option><option>read-img</option><option>listen-img</option>
+          <option>tf</option><option>odd</option><option>img-mcq</option><option>read-img</option><option>listen-img</option><option>pic-mcq</option>
           <option>mcq-multi</option><option>drag-fill</option><option>listen-multi</option><option>img-fill</option>
+          <option>reading-passage</option>
         </select>
         <input class="inp" id="q-search" placeholder="Tìm câu hỏi..." oninput="renderQTable()" style="max-width:200px">
       </div>
@@ -604,10 +566,12 @@ window.fb = {
       <option value="img-mcq">Image MCQ — Chọn ảnh đúng</option>
       <option value="read-img">Read + Image — Đọc chọn ảnh</option>
       <option value="listen-img">Listen + Image — Nghe chọn ảnh</option>
+      <option value="pic-mcq">Picture MCQ — Nhìn ảnh, chọn đáp án chữ</option>
       <option value="mcq-multi">MCQ Multi — Chọn nhiều đáp án</option>
       <option value="drag-fill">Drag Fill — Kéo thả từ vào chỗ trống</option>
       <option value="listen-multi">Listen Multi — Nghe và chọn nhiều đáp án</option>
       <option value="img-fill">Image Fill — Nhìn ảnh điền từ</option>
+      <option value="reading-passage">Reading Passage — Bài đọc nhiều câu hỏi</option>
     </select>
     <div id="q-form-body"></div>
     <div class="err-msg" id="mq-err">Vui lòng điền đầy đủ!</div>
@@ -1137,6 +1101,16 @@ const Q_FORMS={
   <textarea class="inp" id="qf-opts" rows="4" placeholder="https://cat.jpg&#10;https://dog.jpg&#10;https://bird.jpg"></textarea>
   <label class="lbl">Nhãn đáp án đúng</label>
   <input class="inp" id="qf-extra" placeholder="cat">`,
+  "pic-mcq":`<label class="lbl">URL ảnh</label>
+  <input class="inp" id="qf-audio" placeholder="https://....jpg hoặc .png">
+  <label class="lbl">Câu hỏi / hướng dẫn (tuỳ chọn)</label>
+  <input class="inp" id="qf-prompt" placeholder="Con vật này là gì?">
+  <label class="lbl">Đáp án đúng</label>
+  <input class="inp" id="qf-answer" placeholder="cat">
+  <label class="lbl">Các lựa chọn (mỗi đáp án 1 dòng, gồm đáp án đúng)</label>
+  <textarea class="inp" id="qf-opts" rows="4" placeholder="cat&#10;dog&#10;bird&#10;fish"></textarea>
+  <label class="lbl">Gợi ý / dịch nghĩa (tuỳ chọn)</label>
+  <input class="inp" id="qf-extra" placeholder="">`,
   tf:`<label class="lbl">Câu tiếng Anh (đúng hoặc sai)</label>
     <textarea class="inp" id="qf-prompt" rows="3" placeholder="Elephants can fly.&#10;(có thể xuống dòng để viết đoạn văn, rồi xuống dòng ghi câu hỏi)"></textarea>
     <label class="lbl">Câu này đúng hay sai?</label>
@@ -1167,7 +1141,8 @@ const Q_FORMS={
     <label class="lbl">Tất cả các từ trong word box — gồm cả từ đúng và từ mồi nhử (mỗi từ 1 dòng)</label>
     <textarea class="inp" id="qf-opts" rows="5" placeholder="cat&#10;fence&#10;sunny&#10;dog&#10;rainy"></textarea>
     <label class="lbl">Dịch nghĩa (tuỳ chọn)</label>
-    <input class="inp" id="qf-extra" placeholder="">`,
+    <input class="inp" id="qf-extra" placeholder="">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:2px"><input type="checkbox" id="qf-anyorder" style="width:auto;margin:0"> Thứ tự đáp án không quan trọng (friendly = smart đều được)</label>`,
   "listen-multi":`<label class="lbl">Audio URL</label>
     <input class="inp" id="qf-audio" placeholder="https://....mp3">
     <label class="lbl">Hướng dẫn (hiển thị cho học sinh)</label>
@@ -1178,6 +1153,20 @@ const Q_FORMS={
     <textarea class="inp" id="qf-opts" rows="5" placeholder="cat&#10;dog&#10;table&#10;chair&#10;bird"></textarea>
     <label class="lbl">Gợi ý (tuỳ chọn)</label>
     <input class="inp" id="qf-extra" placeholder="">`,
+  "reading-passage":`<label class="lbl">Tiêu đề bài đọc (tuỳ chọn)</label>
+    <input class="inp" id="qf-rp-title" placeholder="My School Day">
+    <label class="lbl">Nội dung bài đọc</label>
+    <textarea class="inp" id="qf-prompt" rows="7" placeholder="Every morning, I wake up at 6 o&#39;clock..."></textarea>
+    <input type="hidden" id="qf-answer" value="passage">
+    <input type="hidden" id="qf-opts" value="">
+    <label class="lbl">Gợi ý / chủ đề (tuỳ chọn)</label>
+    <input class="inp" id="qf-extra" placeholder="Daily routines">
+    <div class="div"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <strong style="font-size:13px">Câu hỏi trong bài đọc</strong>
+      <button type="button" class="btn btn-sm btn-teal" onclick="rpAddSubQ()">+ Thêm câu</button>
+    </div>
+    <div id="rp-subqs"></div>`,
   "img-fill":`<label class="lbl">URL ảnh</label>
     <input class="inp" id="qf-audio" placeholder="https://....jpg hoặc .png">
     <label class="lbl">Câu có chỗ trống (dùng ___ cho chỗ cần điền)</label>
@@ -1190,8 +1179,50 @@ const Q_FORMS={
 function renderQForm(){
   const type=document.getElementById("mq-type").value;
   document.getElementById("q-form-body").innerHTML=Q_FORMS[type]||"";
+  if(type==="reading-passage"){rpSubQs=[];rpRenderSubQs();}
+}
+
+// ══ Reading Passage admin ══
+let rpSubQs=[];
+const RP_SUBTYPES=["mcq","fill","tf","drag-fill","mcq-multi","arrange"];
+const RP_SUBTYPE_LABELS={"mcq":"MCQ","fill":"Fill","tf":"True/False","drag-fill":"Drag Fill","mcq-multi":"Multi-select","arrange":"Arrange"};
+function rpRenderSubQs(){
+  const wrap=document.getElementById("rp-subqs");if(!wrap)return;
+  if(!rpSubQs.length){wrap.innerHTML='<div style="font-size:12px;color:var(--tx3);text-align:center;padding:10px">Chưa có câu hỏi nào. Nhấn "+ Thêm câu" để thêm.</div>';return;}
+  wrap.innerHTML=rpSubQs.map((sq,i)=>`<div class="rp-sub-q" id="rpsq-${i}">
+    <div class="rp-sub-q-hdr">
+      <span class="rp-sub-q-num">Câu ${i+1} — ${RP_SUBTYPE_LABELS[sq.type]||sq.type}</span>
+      <div class="btn-row">
+        ${i>0?`<button type="button" class="btn btn-sm" onclick="rpMoveSubQ(${i},-1)">↑</button>`:""}
+        ${i<rpSubQs.length-1?`<button type="button" class="btn btn-sm" onclick="rpMoveSubQ(${i},1)">↓</button>`:""}
+        <button type="button" class="btn btn-sm btn-red" onclick="rpRemoveSubQ(${i})">Xóa</button>
+      </div>
+    </div>
+    <label class="lbl">Dạng câu</label>
+    <select class="inp" onchange="rpSubQChange(${i},this.value)">${RP_SUBTYPES.map(t=>`<option value="${t}"${sq.type===t?" selected":""}>${RP_SUBTYPE_LABELS[t]}</option>`).join("")}</select>
+    <label class="lbl">Câu hỏi / Prompt</label>
+    <textarea class="inp" rows="2" placeholder="Câu hỏi..." oninput="rpSubQs[${i}].prompt=this.value">${esc(sq.prompt||"")}</textarea>
+    ${rpSubQExtra(sq,i)}
+  </div>`).join("");
+}
+function rpSubQExtra(sq,i){
+  const t=sq.type;
+  if(t==="mcq"||t==="mcq-multi") return `<label class="lbl">${t==="mcq-multi"?"Đáp án đúng (mỗi dòng 1)":"Đáp án đúng"}</label><textarea class="inp" rows="2" oninput="rpSubQs[${i}].answer=this.value">${esc(sq.answer||"")}</textarea><label class="lbl">Tất cả lựa chọn (mỗi dòng)</label><textarea class="inp" rows="3" oninput="rpSubQs[${i}].opts=this.value.split('\\n').filter(Boolean)">${esc((sq.opts||[]).join("\\n"))}</textarea>`;
+  if(t==="fill") return `<label class="lbl">Đáp án (điền vào ___)</label><input class="inp" value="${esc(sq.answer||"")}" oninput="rpSubQs[${i}].answer=this.value">`;
+  if(t==="tf") return `<label class="lbl">Đúng hay Sai?</label><select class="inp" onchange="rpSubQs[${i}].answer=this.value"><option value="True"${(sq.answer||"True")==="True"?" selected":""}>True</option><option value="False"${sq.answer==="False"?" selected":""}>False</option></select>`;
+  if(t==="arrange") return `<label class="lbl">Câu đầy đủ (sẽ xáo trộn)</label><input class="inp" value="${esc(sq.answer||"")}" oninput="rpSubQs[${i}].answer=this.value">`;
+  if(t==="drag-fill") return `<label class="lbl">Đáp án theo thứ tự (mỗi dòng)</label><textarea class="inp" rows="2" oninput="rpSubQs[${i}].answer=this.value">${esc(sq.answer||"")}</textarea><label class="lbl">Word box (mỗi dòng)</label><textarea class="inp" rows="3" oninput="rpSubQs[${i}].opts=this.value.split('\\n').filter(Boolean)">${esc((sq.opts||[]).join("\\n"))}</textarea><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" ${sq.anyOrder?"checked":""} onchange="rpSubQs[${i}].anyOrder=this.checked" style="width:auto;margin:0"> Thứ tự không quan trọng</label>`;
+  return "";
+}
+function rpSubQChange(i,type){rpSubQs[i]={type,prompt:rpSubQs[i].prompt||"",answer:"",opts:[]};rpRenderSubQs();}
+function rpAddSubQ(){rpSubQs.push({type:"mcq",prompt:"",answer:"",opts:[]});rpRenderSubQs();}
+function rpRemoveSubQ(i){rpSubQs.splice(i,1);rpRenderSubQs();}
+function rpMoveSubQ(i,dir){
+  const j=i+dir;if(j<0||j>=rpSubQs.length)return;
+  [rpSubQs[i],rpSubQs[j]]=[rpSubQs[j],rpSubQs[i]];rpRenderSubQs();
 }
 function openQModal(id){
+  const prevTopic=document.getElementById("mq-topic").value;
   populateQFilterTopics();
   const q=id?getQs().find(x=>x.id===id):null;
   document.getElementById("mq-id").value=id||"";
@@ -1200,20 +1231,28 @@ function openQModal(id){
   if(q){
     document.getElementById("mq-topic").value=q.topicId;
     document.getElementById("mq-type").value=q.type;
+  } else if(prevTopic){
+    document.getElementById("mq-topic").value=prevTopic;
   }
   renderQForm();
   if(q){
     setTimeout(()=>{
       const fp=document.getElementById("qf-prompt");if(fp)fp.value=q.prompt||"";
       const fa=document.getElementById("qf-answer");
-      if(fa&&fa.tagName!=="SELECT"){
+      if(fa&&fa.tagName!=="SELECT"&&fa.type!=="hidden"){
         if(q.type==="mcq-multi"||q.type==="listen-multi")fa.value=(q.answer||"").split("|").join("\n");
         else fa.value=q.answer||"";
-      }else if(fa)fa.value=q.answer||"True";
+      }else if(fa&&fa.tagName==="SELECT")fa.value=q.answer||"True";
       const fo=document.getElementById("qf-opts");if(fo&&fo.type!=="hidden")fo.value=(q.opts||[]).join(fo.tagName==="TEXTAREA"?"\n":", ");
       const fe=document.getElementById("qf-extra");if(fe&&fe.type!=="hidden")fe.value=q.extra||"";
       const faud=document.getElementById("qf-audio");if(faud) faud.value=q.audioUrl||"";
+      const fao=document.getElementById("qf-anyorder");if(fao)fao.checked=!!(q.anyOrder);
       const flsub=document.getElementById("qf-lsub");if(flsub) flsub.value=q.listenSub||"mcq";
+      if(q.type==="reading-passage"){
+        const ft=document.getElementById("qf-rp-title");if(ft)ft.value=q.rpTitle||"";
+        rpSubQs=(q.subQuestions||[]).map(sq=>({...sq,opts:Array.isArray(sq.opts)?sq.opts:[]}));
+        rpRenderSubQs();
+      }
     },10);
   }
   openMod("modal-q");
@@ -1233,12 +1272,24 @@ async function saveQ(){
   let extra=fe?fe.value.trim():"";
   let audioUrl=faud?faud.value.trim():"";
   if(type==="arrange"){answer=prompt;prompt="Sắp xếp thành câu đúng";}
+  let rpTitle="";let subQuestions=undefined;
+  if(type==="reading-passage"){
+    const ftitle=document.getElementById("qf-rp-title");
+    rpTitle=ftitle?ftitle.value.trim():"";
+    subQuestions=rpSubQs.map(sq=>{
+      if(typeof sq.opts==="string")sq.opts=sq.opts.split("\n").map(x=>x.trim()).filter(Boolean);
+      if(sq.type==="mcq-multi")sq.answer=(sq.answer||"").split("\n").map(x=>x.trim()).filter(Boolean).join("|");
+      return {type:sq.type,prompt:sq.prompt||"",answer:sq.answer||"",opts:sq.opts||[]};
+    });
+    answer="passage";
+  }
   // mcq-multi / listen-multi: answer field is multiline — join as pipe-separated for storage
   if(type==="mcq-multi"||type==="listen-multi"){
     answer=answer.split("\n").map(x=>x.trim()).filter(Boolean).join("|");
   }
   if(!prompt||!answer){document.getElementById("mq-err").classList.add("on");return;}
   const opts=optsRaw?(fo&&fo.type==="hidden"?optsRaw.split(","):optsRaw.split("\n")).map(x=>x.trim()).filter(Boolean):[];
+  const fao=document.getElementById("qf-anyorder");const anyOrder=fao?fao.checked:false;
   if(id){
   
     const existing =
@@ -1251,13 +1302,8 @@ async function saveQ(){
         existing.firestoreId
       ),
       {
-        topicId,
-        type,
-        prompt,
-        answer,
-        opts,
-        extra,
-        audioUrl
+        topicId,type,prompt,answer,opts,extra,audioUrl,anyOrder,
+        ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
       }
     );
   
@@ -1270,13 +1316,8 @@ async function saveQ(){
       ),
       {
         id:"q"+Date.now(),
-        topicId,
-        type,
-        prompt,
-        answer,
-        opts,
-        extra,
-        audioUrl
+        topicId,type,prompt,answer,opts,extra,audioUrl,anyOrder,
+        ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
       }
     );
   
@@ -1546,7 +1587,7 @@ function renderQ(){
   document.getElementById("q-ctr").textContent=(quizIdx+1)+" / "+total;
   document.getElementById("q-live").textContent="✓ "+quizCorrect;
   document.getElementById("qpfill").style.width=(quizIdx/total*100)+"%";
-  const labels={mcq:"Từ vựng",fill:"Điền từ",arrange:"Sắp xếp câu",phonics:"Phiên âm",listen:"Bài nghe","listen-tf":"Nghe Đúng/Sai","listen-fill":"Nghe Điền từ",tf:"Đúng / Sai",odd:"Odd one out","img-mcq":"Chọn ảnh","read-img":"Đọc + Ảnh","listen-img":"Nghe + Ảnh","mcq-multi":"Chọn nhiều đáp án","drag-fill":"Kéo thả từ","listen-multi":"Nghe + Chọn nhiều","img-fill":"Nhìn ảnh điền từ"};
+  const labels={mcq:"Từ vựng",fill:"Điền từ",arrange:"Sắp xếp câu",phonics:"Phiên âm",listen:"Bài nghe","listen-tf":"Nghe Đúng/Sai","listen-fill":"Nghe Điền từ",tf:"Đúng / Sai",odd:"Odd one out","img-mcq":"Chọn ảnh","read-img":"Đọc + Ảnh","listen-img":"Nghe + Ảnh","pic-mcq":"Nhìn ảnh chọn chữ","mcq-multi":"Chọn nhiều đáp án","drag-fill":"Kéo thả từ","listen-multi":"Nghe + Chọn nhiều","img-fill":"Nhìn ảnh điền từ"};
   document.getElementById("qt-badge").textContent=labels[q.type]||q.type;
   const body=document.getElementById("quiz-body");
   if(q.type==="mcq"||q.type==="odd")body.innerHTML=renderMCQ(q);
@@ -1560,10 +1601,12 @@ function renderQ(){
   else if(q.type==="img-mcq")body.innerHTML=renderImgMCQ(q);
   else if(q.type==="read-img")body.innerHTML=renderReadImg(q);
   else if(q.type==="listen-img")body.innerHTML=renderListenImg(q);
+  else if(q.type==="pic-mcq")body.innerHTML=renderPicMCQ(q);
   else if(q.type==="mcq-multi"){body.innerHTML=renderMCQMulti(q);}
   else if(q.type==="drag-fill"){body.innerHTML=renderDragFill(q);initDragFill();}
   else if(q.type==="listen-multi"){body.innerHTML=renderListenMulti(q);}
   else if(q.type==="img-fill"){body.innerHTML=renderImgFill(q);setTimeout(()=>{const fi=document.getElementById("fi");if(fi)fi.focus();},50);}
+  else if(q.type==="reading-passage"){body.innerHTML=renderReadingPassage(q);rpQuizInit(q);}
   else body.innerHTML=renderMCQ(q);
 }
 function nextQ(){quizIdx++;renderQ();}
@@ -1847,6 +1890,17 @@ function renderListenImg(q){
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
 
+// ══ Picture MCQ (image prompt, text choices) ══
+function renderPicMCQ(q){
+  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([q.answer]);
+  const imgUrl=q.audioUrl||"";
+  return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
+  ${q.prompt?`<div class="qbox">${esc(q.prompt)}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>`:""}
+  <div class="opts">${opts.map(o=>`<button class="obt" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
+  <div class="fb" id="fb"></div>
+  <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
+}
+
 // ══ Image Fill ══
 function renderImgFill(q){
   const ans=q.answer||"";
@@ -1907,6 +1961,9 @@ function toggleMulti(btn){
 function checkMCQMulti(answerStr){
   const correctSet=new Set(answerStr.split("|").map(x=>x.trim()).filter(Boolean));
   const btns=document.querySelectorAll(".obt-multi");
+  // Disable the check button immediately to prevent double-firing
+  const checkBtn=document.querySelector(".btn-pur[onclick*='checkMCQMulti']");
+  if(checkBtn){if(checkBtn.dataset.checked)return;checkBtn.dataset.checked="1";checkBtn.disabled=true;}
   btns.forEach(b=>b.classList.add("locked"));
   let allCorrect=true;
   btns.forEach(b=>{
@@ -1934,7 +1991,7 @@ function renderDragFill(q){
     const i=blankIdx++;
     return `<span class="df-blank" id="dfb-${i}" data-idx="${i}" ondragover="dfDragOver(event,this)" ondragleave="dfDragLeave(this)" ondrop="dfDrop(event,this)" onclick="dfClickBlank(this)"><span class="df-blank-text" id="dfbt-${i}"></span></span>`;
   });
-  dfState={blanks:new Array(blankIdx).fill(null),wordChosen:new Array(wordBox.length).fill(false),answers};
+  dfState={blanks:new Array(blankIdx).fill(null),wordChosen:new Array(wordBox.length).fill(false),answers,anyOrder:!!(q.anyOrder)};
   return `<div class="df-passage" id="df-passage">${passageHtml}</div>
   ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
   <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">Kéo thả (hoặc nhấn) từ vào chỗ trống:</div>
@@ -1992,22 +2049,266 @@ function dfPlaceWord(chip,blank){
   const bt=document.getElementById("dfbt-"+idx);if(bt)bt.textContent=word;
 }
 function checkDragFill(){
-  const answers=dfState.answers;
-  const blanks=dfState.blanks;
+  const {answers,blanks,anyOrder}=dfState;
   if(blanks.some(b=>b==null)){showFB(false,"Điền tất cả các chỗ trống trước!");return;}
-  // lock
+  const checkBtn=document.querySelector(".btn-pur[onclick*='checkDragFill']");
+  if(checkBtn){if(checkBtn.dataset.checked)return;checkBtn.dataset.checked="1";checkBtn.disabled=true;}
   document.querySelectorAll(".df-chip").forEach(c=>{c.setAttribute("draggable","false");c.style.cursor="default";});
   document.querySelectorAll(".df-blank").forEach(b=>{b.style.cursor="default";b.onclick=null;b.ondragover=null;b.ondrop=null;});
+  const filled=blanks.map(b=>(b?b.word.trim().toLowerCase():""));
+  const ansLower=answers.map(a=>a.trim().toLowerCase());
   let allOk=true;
-  blanks.forEach((b,i)=>{
-    const blank=document.getElementById("dfb-"+i);
-    if(!blank)return;
-    const ok=b&&b.word.trim().toLowerCase()===answers[i]?.trim().toLowerCase();
-    blank.classList.add(ok?"ok":"bad");
-    if(!ok)allOk=false;
-  });
+  if(anyOrder){
+    // multiset match: each filled word must exist in answers pool, order doesn't matter
+    const pool=[...ansLower];
+    const matched=filled.map(w=>{const idx=pool.indexOf(w);if(idx!==-1){pool.splice(idx,1);return true;}return false;});
+    blanks.forEach((b,i)=>{
+      const blank=document.getElementById("dfb-"+i);if(!blank)return;
+      blank.classList.add(matched[i]?"ok":"bad");
+      if(!matched[i])allOk=false;
+    });
+  }else{
+    blanks.forEach((b,i)=>{
+      const blank=document.getElementById("dfb-"+i);if(!blank)return;
+      const ok=filled[i]===ansLower[i];
+      blank.classList.add(ok?"ok":"bad");
+      if(!ok)allOk=false;
+    });
+  }
   showFB(allOk,answers.join(", "));if(allOk)quizCorrect++;
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
+}
+
+// ══ Reading Passage Quiz Engine ══
+let rpQuizState={subQs:[],current:0,correct:0};
+let rpArrangeState={placed:[],bank:[]};
+let rpDfState={blanks:[],answers:[]};
+let rpDfDragging=null;
+let rpDfSelectedChip=null;
+
+function renderReadingPassage(q){
+  const subs=q.subQuestions||[];
+  const title=q.rpTitle||"Bài đọc";
+  const passageHtml=esc(q.prompt||"").replace(/\n/g,"<br>");
+  return `<div class="rp-sticky">
+    <span class="rp-prog-text" id="rp-prog">Câu <strong>1</strong> / ${subs.length}</span>
+    <span style="font-size:12px;color:var(--teal);font-weight:600" id="rp-score">✓ 0</span>
+  </div>
+  <div class="rp-passage">
+    <div class="rp-passage-title">📖 ${esc(title)}</div>
+    <div class="rp-passage-body">${passageHtml}</div>
+  </div>
+  <div id="rp-qarea"></div>`;
+}
+
+function rpQuizInit(q){
+  rpQuizState={subQs:q.subQuestions||[],current:0,correct:0};
+  rpDfDragging=null;rpDfSelectedChip=null;
+  rpRenderCurrent();
+}
+
+function rpRenderCurrent(){
+  const {subQs,current,correct}=rpQuizState;
+  const pe=document.getElementById("rp-prog");const se=document.getElementById("rp-score");
+  if(pe)pe.innerHTML=`Câu <strong>${current+1}</strong> / ${subQs.length}`;
+  if(se)se.textContent="✓ "+correct;
+  if(current>=subQs.length){rpShowResult();return;}
+  const sq=subQs[current];
+  const area=document.getElementById("rp-qarea");if(!area)return;
+  const isLast=current===subQs.length-1;
+  area.innerHTML=`<div class="rp-qblock" id="rp-qblock">
+    <div class="rp-qtitle"><span class="rp-qnum">${current+1}</span><span>${esc(sq.prompt||"")}</span></div>
+    <div id="rp-qbody"></div>
+    <div class="fb" id="rp-fb"></div>
+    <button class="nxbt" id="rp-nb" onclick="rpNext()">${isLast?"Xem kết quả bài đọc →":"Câu tiếp theo →"}</button>
+  </div>`;
+  rpRenderBody(sq);
+}
+
+function rpRenderBody(sq){
+  const body=document.getElementById("rp-qbody");if(!body)return;
+  const t=sq.type;
+  if(t==="mcq"){
+    const opts=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([sq.answer]);
+    body.innerHTML=`<div class="opts">${opts.map(o=>`<button class="obt" onclick="rpCheckMCQ(this,${escJs(o)},${escJs(sq.answer)})">${esc(o)}</button>`).join("")}</div>`;
+  }else if(t==="mcq-multi"){
+    const correctSet=new Set((sq.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
+    const opts=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([...correctSet]);
+    body.innerHTML=`<div class="multi-hint">Chọn tất cả đáp án đúng</div>
+      <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
+      <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
+  }else if(t==="fill"){
+    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=Math.max(maxLen*13,50);
+    const parts=(sq.prompt||"").split("___");
+    const sentHtml=parts.length>=2
+      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">${esc(parts.slice(1).join("___"))}`
+      :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">`;
+    body.innerHTML=`<div class="fill-sentence">${sentHtml}</div>
+      <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Kiểm tra</button>`;
+    setTimeout(()=>{const fi=document.getElementById("rp-fi");if(fi)fi.focus();},50);
+  }else if(t==="tf"){
+    body.innerHTML=`<div class="tfopts">
+      <button class="tfbt" style="color:var(--teal)" onclick="rpCheckTF(this,'True',${escJs(sq.answer)})">✓ True</button>
+      <button class="tfbt" style="color:var(--red)" onclick="rpCheckTF(this,'False',${escJs(sq.answer)})">✗ False</button>
+    </div>`;
+  }else if(t==="arrange"){
+    rpArrangeState={placed:[],bank:shuffled((sq.answer||"").split(" ").filter(Boolean))};
+    body.innerHTML=`<div class="hint-lbl">Nhấn từ để đưa vào câu</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">Câu của bạn:</div>
+      <div class="aans" id="rp-aans"></div>
+      <div style="font-size:12px;color:var(--tx2);margin:7px 0 4px">Từ gợi ý:</div>
+      <div class="wbank" id="rp-wbank"></div>
+      <button class="btn btn-pur" onclick="rpCheckArr(${escJs(sq.answer)})">Kiểm tra</button>`;
+    rpRenderArr();
+  }else if(t==="drag-fill"){
+    rpRenderDragFill(sq,body);
+  }else{
+    body.innerHTML=`<div style="color:var(--tx3);font-size:13px">Dạng: ${esc(t)}</div>`;
+  }
+}
+
+function rpShowFB(ok,ans){
+  const fb=document.getElementById("rp-fb");if(!fb)return;
+  fb.className="fb on "+(ok?"ok":"bad");
+  fb.textContent=ok?"🎉 Chính xác!":"❌ Sai! Đáp án: "+ans;
+  const nb=document.getElementById("rp-nb");if(nb)nb.classList.add("on");
+  if(ok)rpQuizState.correct++;
+}
+
+function rpNext(){
+  rpQuizState.current++;
+  rpRenderCurrent();
+  setTimeout(()=>{const a=document.getElementById("rp-qarea");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},60);
+}
+
+function rpShowResult(){
+  const {subQs,correct}=rpQuizState;const total=subQs.length;
+  const pct=total?Math.round(correct/total*100):0;
+  const stars=pct>=90?"⭐⭐⭐":pct>=70?"⭐⭐":"⭐";
+  if(pct>=70)quizCorrect++;
+  const area=document.getElementById("rp-qarea");if(!area)return;
+  area.innerHTML=`<div class="rp-qblock" style="text-align:center;padding:20px">
+    <div style="font-size:36px;font-weight:700;color:var(--pur)">${pct}%</div>
+    <div style="font-size:13px;color:var(--tx2);margin-top:4px">${correct} / ${total} câu đúng</div>
+    <div style="font-size:28px;margin:10px 0">${stars}</div>
+    <button class="btn btn-pur btn-block" onclick="nextQ()" style="margin-top:10px">${quizIdx+1<quizQueue.length?"Tiếp tục →":"Xem kết quả →"}</button>
+  </div>`;
+}
+
+function rpCheckMCQ(btn,c,a){
+  document.querySelectorAll("#rp-qblock .obt").forEach(b=>b.disabled=true);
+  const ok=c===a;btn.classList.add(ok?"ok":"bad");
+  if(!ok)document.querySelectorAll("#rp-qblock .obt").forEach(b=>{if(b.textContent.trim()===a)b.classList.add("ok");});
+  rpShowFB(ok,a);
+}
+function rpCheckFill(){
+  const fi=document.getElementById("rp-fi");if(!fi||fi.disabled)return;
+  const sq=rpQuizState.subQs[rpQuizState.current];
+  const ok=fi.value.trim().toLowerCase()===sq.answer.toLowerCase();
+  fi.disabled=true;
+  if(ok){fi.value=sq.answer;fi.classList.add("ok");}
+  else{fi.classList.add("bad");setTimeout(()=>{fi.value=sq.answer;fi.style.color="var(--teal)";},800);}
+  rpShowFB(ok,sq.answer);
+}
+function rpCheckTF(btn,c,a){
+  document.querySelectorAll("#rp-qblock .tfbt").forEach(b=>b.disabled=true);
+  const ok=c===a;btn.classList.add(ok?"ok":"bad");
+  rpShowFB(ok,"Đáp án: "+a);
+}
+function rpCheckMulti(answerStr){
+  const correctSet=new Set(answerStr.split("|").map(x=>x.trim()).filter(Boolean));
+  const btns=document.querySelectorAll("#rp-qblock .obt-multi");
+  const checkBtn=document.querySelector("#rp-qblock .btn-pur");
+  if(checkBtn){if(checkBtn.dataset.checked)return;checkBtn.dataset.checked="1";checkBtn.disabled=true;}
+  btns.forEach(b=>b.classList.add("locked"));
+  let allOk=true;
+  btns.forEach(b=>{
+    const val=b.getAttribute("onclick").match(/toggleMulti\(this,(.+)\)/)?.[1];
+    if(!val)return;
+    let v;try{v=JSON.parse(val.replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&"));}catch(e){v=val;}
+    const sel=b.classList.contains("sel"),cor=correctSet.has(v);
+    if(sel&&cor)b.classList.add("ok");
+    else if(sel&&!cor){b.classList.add("bad");allOk=false;}
+    else if(!sel&&cor){b.classList.add("ok-dim");allOk=false;}
+  });
+  rpShowFB(allOk,[...correctSet].join(", "));
+}
+function rpRenderArr(){
+  const aa=document.getElementById("rp-aans"),wb=document.getElementById("rp-wbank");if(!aa||!wb)return;
+  aa.innerHTML=rpArrangeState.placed.map((w,i)=>`<span class="wplaced" onclick="rpArrRem(${i})">${esc(w)}</span>`).join("");
+  wb.innerHTML=rpArrangeState.bank.map((w,i)=>`<span class="wchip" onclick="rpArrAdd(${i})">${esc(w)}</span>`).join("");
+}
+function rpArrAdd(i){const w=rpArrangeState.bank.splice(i,1)[0];rpArrangeState.placed.push(w);rpRenderArr();}
+function rpArrRem(i){const w=rpArrangeState.placed.splice(i,1)[0];rpArrangeState.bank.push(w);rpRenderArr();}
+function rpCheckArr(ans){
+  const result=rpArrangeState.placed.join(" ");const ok=result.trim()===ans.trim();
+  document.querySelectorAll("#rp-qblock .wchip,#rp-qblock .wplaced").forEach(b=>b.style.pointerEvents="none");
+  rpShowFB(ok,ans);
+}
+function rpRenderDragFill(sq,body){
+  const answers=(sq.answer||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const wordBox=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([...answers]);
+  let bi=0;
+  const ph=esc(sq.prompt||"").replace(/___/g,()=>{
+    const i=bi++;
+    return `<span class="df-blank" id="rpdfb-${i}" data-idx="${i}" ondragover="rpDfOver(event,this)" ondragleave="rpDfLeave(this)" ondrop="rpDfDrop(event,this)" onclick="rpDfClickBlank(this)"><span id="rpdfbt-${i}"></span></span>`;
+  });
+  rpDfState={blanks:new Array(bi).fill(null),answers,anyOrder:!!(sq.anyOrder)};
+  body.innerHTML=`<div class="df-passage">${ph}</div>
+    <div class="df-wordbox" id="rpdf-wb">${wordBox.map((w,i)=>`<span class="df-chip" id="rpdfc-${i}" draggable="true" data-word="${esc(w)}" data-ci="${i}" ondragstart="rpDfStart(event,this)" onclick="rpDfClickChip(this)">${esc(w)}</span>`).join("")}</div>
+    <button class="btn btn-pur" style="width:100%;margin-bottom:4px" onclick="rpCheckDf()">Kiểm tra</button>`;
+}
+function rpDfStart(e,chip){rpDfDragging=chip;chip.classList.add("dragging");e.dataTransfer.effectAllowed="move";}
+function rpDfOver(e,b){e.preventDefault();b.classList.add("drag-over");}
+function rpDfLeave(b){b.classList.remove("drag-over");}
+function rpDfDrop(e,blank){e.preventDefault();blank.classList.remove("drag-over");if(!rpDfDragging)return;rpDfPlace(rpDfDragging,blank);}
+function rpDfClickChip(chip){
+  if(chip.classList.contains("used"))return;
+  if(rpDfSelectedChip&&rpDfSelectedChip!==chip)rpDfSelectedChip.style.outline="";
+  if(rpDfSelectedChip===chip){rpDfSelectedChip.style.outline="";rpDfSelectedChip=null;return;}
+  rpDfSelectedChip=chip;chip.style.outline="2.5px solid var(--pur)";
+}
+function rpDfClickBlank(blank){
+  if(blank.classList.contains("ok")||blank.classList.contains("bad"))return;
+  if(rpDfSelectedChip){rpDfPlace(rpDfSelectedChip,blank);rpDfSelectedChip.style.outline="";rpDfSelectedChip=null;return;}
+  const idx=parseInt(blank.dataset.idx);
+  if(rpDfState.blanks[idx]!=null){
+    const {ci}=rpDfState.blanks[idx];rpDfState.blanks[idx]=null;blank.classList.remove("filled");
+    const bt=document.getElementById("rpdfbt-"+idx);if(bt)bt.textContent="";
+    const chip=document.getElementById("rpdfc-"+ci);if(chip)chip.classList.remove("used");
+  }
+}
+function rpDfPlace(chip,blank){
+  const idx=parseInt(blank.dataset.idx);const ci=parseInt(chip.dataset.ci);const word=chip.dataset.word;
+  if(rpDfState.blanks[idx]!=null){const old=rpDfState.blanks[idx];const oc=document.getElementById("rpdfc-"+old.ci);if(oc)oc.classList.remove("used");}
+  rpDfState.blanks[idx]={ci,word};chip.classList.add("used");blank.classList.add("filled");
+  const bt=document.getElementById("rpdfbt-"+idx);if(bt)bt.textContent=word;
+}
+function rpCheckDf(){
+  const {blanks,answers,anyOrder}=rpDfState;
+  if(blanks.some(b=>b==null)){rpShowFB(false,"Điền tất cả chỗ trống trước!");return;}
+  const btn=document.querySelector("#rp-qblock .btn-pur");
+  if(btn){if(btn.dataset.checked)return;btn.dataset.checked="1";btn.disabled=true;}
+  document.querySelectorAll("#rp-qblock .df-chip").forEach(c=>{c.setAttribute("draggable","false");c.style.cursor="default";});
+  document.querySelectorAll("#rp-qblock .df-blank").forEach(b=>{b.style.cursor="default";b.onclick=null;b.ondragover=null;b.ondrop=null;});
+  const filled=blanks.map(b=>(b?b.word.trim().toLowerCase():""));
+  const ansLower=answers.map(a=>a.trim().toLowerCase());
+  let allOk=true;
+  if(anyOrder){
+    const pool=[...ansLower];
+    const matched=filled.map(w=>{const idx=pool.indexOf(w);if(idx!==-1){pool.splice(idx,1);return true;}return false;});
+    blanks.forEach((b,i)=>{
+      const blank=document.getElementById("rpdfb-"+i);if(!blank)return;
+      blank.classList.add(matched[i]?"ok":"bad");if(!matched[i])allOk=false;
+    });
+  }else{
+    blanks.forEach((b,i)=>{
+      const blank=document.getElementById("rpdfb-"+i);if(!blank)return;
+      const ok=filled[i]===ansLower[i];
+      blank.classList.add(ok?"ok":"bad");if(!ok)allOk=false;
+    });
+  }
+  rpShowFB(allOk,answers.join(", "));
 }
 
 function showFB(ok,ans){
