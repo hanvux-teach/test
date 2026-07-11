@@ -269,6 +269,7 @@ textarea.inp{resize:vertical;min-height:70px}
 </head>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 (function(){
   // Dùng bản "compat" SDK (script thường, KHÔNG phải type="module")
@@ -286,6 +287,14 @@ textarea.inp{resize:vertical;min-height:70px}
 
   const app = firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  const auth = firebase.auth();
+  window.auth = auth;
+
+  // Email cố định dùng để đăng nhập Firebase Auth cho tài khoản GIÁO VIÊN.
+  // Tài khoản này phải được tạo 1 lần trong Firebase Console:
+  // Authentication -> Sign-in method -> bật "Email/Password"
+  // Authentication -> Users -> Add user -> Email: đúng chuỗi bên dưới, Password: tuỳ bạn chọn.
+  window.ADMIN_EMAIL = "admin@english-practice-3.local";
 
   console.log("🔥 Firebase connected");
 
@@ -382,7 +391,7 @@ textarea.inp{resize:vertical;min-height:70px}
 <div id="s-admin" class="scr">
   <div class="hdr">
     <div><div class="hdr-title">⚙️ Quản lý</div><div class="hdr-sub">Chế độ giáo viên</div></div>
-    <button class="btn btn-sm" onclick="showScr('s-login')">← Thoát</button>
+    <button class="btn btn-sm" onclick="exitAdmin()">← Thoát</button>
   </div>
   <div class="nav">
     <button class="nb on" onclick="aTab('topics')">📚 Chủ đề</button>
@@ -794,12 +803,23 @@ function doLogin(){
 }
 function doLogout(){currentUser=null;populateStudentSel();showScr("s-login");}
 function showAdminLogin(){document.getElementById("teacher-pw").value="";document.getElementById("admin-login-err").classList.remove("on");showScr("s-adminlogin");}
-function unlockAdmin(){
+async function unlockAdmin(){
   const pw=document.getElementById("teacher-pw").value;
-  if(pw!==getTeacherPw()){document.getElementById("admin-login-err").classList.add("on");return;}
-  document.getElementById("admin-login-err").classList.remove("on");
+  const err=document.getElementById("admin-login-err");
+  err.classList.remove("on");
+  try{
+    await window.auth.signInWithEmailAndPassword(window.ADMIN_EMAIL,pw);
+  }catch(e){
+    console.error("Admin login error:",e);
+    err.classList.add("on");
+    return;
+  }
   showScr("s-admin");
   aTab("topics");
+}
+function exitAdmin(){
+  window.auth.signOut().catch(e=>console.error("Sign out error:",e));
+  showScr("s-login");
 }
 
 // ══════ ADMIN TABS ══════
