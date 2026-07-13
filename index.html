@@ -179,10 +179,15 @@ textarea.inp{resize:vertical;min-height:70px}
  
 /* inline fill-in-blank */
 .fill-sentence{font-size:17px;font-weight:500;text-align:center;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:16px;line-height:2;word-break:break-word}
-.fill-blank{display:inline-block;border:none;border-bottom:2.5px solid var(--pur);background:transparent;font-size:17px;font-weight:700;color:var(--pur);text-align:center;outline:none;padding:0 4px;min-width:40px;transition:.15s;border-radius:0}
-.fill-blank:focus{border-bottom-color:var(--pur-d)}
-.fill-blank.ok{color:var(--teal);border-bottom-color:var(--teal)}
-.fill-blank.bad{color:var(--red);border-bottom-color:var(--red)}
+.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 4px 3px 6px;min-width:40px;letter-spacing:10px;transition:.15s;border-radius:0;
+  background-image:linear-gradient(to left, var(--pur) 2px, transparent 2px);
+  background-repeat:repeat-x;
+  background-position:left bottom;
+  background-size:20px 2.5px;
+}
+.fill-blank:focus{background-image:linear-gradient(to left, var(--pur-d) 2px, transparent 2px)}
+.fill-blank.ok{color:var(--teal);background-image:linear-gradient(to left, var(--teal) 2px, transparent 2px)}
+.fill-blank.bad{color:var(--red);background-image:linear-gradient(to left, var(--red) 2px, transparent 2px)}
 .fill-blank:disabled{cursor:default}
  
 /* underline toolbar for phonics */
@@ -1651,7 +1656,7 @@ function renderFill(q){
   // Build sentence with inline input replacing ___
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*13,50);
+  const width=maxLen*20+10;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -1660,7 +1665,7 @@ function renderFill(q){
   this.style.color=(this.value?'var(--pur)':'');
 ">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=esc(q.prompt||"")+` <input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+    sentenceHtml=esc(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
 ">`;
@@ -1839,7 +1844,7 @@ function renderListenTF(q){
 function renderListenFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*13,50);
+  const width=maxLen*20+10;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -1925,7 +1930,7 @@ function renderPicMCQ(q){
 function renderImgFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*14,60);
+  const width=maxLen*20+10;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -2158,7 +2163,7 @@ function rpRenderBody(sq){
       <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
       <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
   }else if(t==="fill"){
-    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=Math.max(maxLen*13,50);
+    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=maxLen*20+10;
     const parts=(sq.prompt||"").split("___");
     const sentHtml=parts.length>=2
       ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">${esc(parts.slice(1).join("___"))}`
