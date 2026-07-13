@@ -179,15 +179,15 @@ textarea.inp{resize:vertical;min-height:70px}
  
 /* inline fill-in-blank */
 .fill-sentence{font-size:17px;font-weight:500;text-align:center;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:16px;line-height:2;word-break:break-word}
-.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 4px 3px 6px;min-width:40px;letter-spacing:10px;transition:.15s;border-radius:0;
-  background-image:linear-gradient(to left, var(--pur) 2px, transparent 2px);
+.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 2px 4px 2px;min-width:40px;letter-spacing:8px;transition:.15s;border-radius:0;
+  background-image:linear-gradient(to right, var(--pur) 0, var(--pur) 1ch, transparent 1ch);
   background-repeat:repeat-x;
-  background-position:left bottom;
-  background-size:20px 2.5px;
+  background-position:2px bottom;
+  background-size:calc(1ch + 8px) 3px;
 }
-.fill-blank:focus{background-image:linear-gradient(to left, var(--pur-d) 2px, transparent 2px)}
-.fill-blank.ok{color:var(--teal);background-image:linear-gradient(to left, var(--teal) 2px, transparent 2px)}
-.fill-blank.bad{color:var(--red);background-image:linear-gradient(to left, var(--red) 2px, transparent 2px)}
+.fill-blank:focus{background-image:linear-gradient(to right, var(--pur-d) 0, var(--pur-d) 1ch, transparent 1ch)}
+.fill-blank.ok{color:var(--teal);background-image:linear-gradient(to right, var(--teal) 0, var(--teal) 1ch, transparent 1ch)}
+.fill-blank.bad{color:var(--red);background-image:linear-gradient(to right, var(--red) 0, var(--red) 1ch, transparent 1ch)}
 .fill-blank:disabled{cursor:default}
  
 /* underline toolbar for phonics */
@@ -1656,16 +1656,16 @@ function renderFill(q){
   // Build sentence with inline input replacing ___
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=maxLen*20+10;
+  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
 ">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=esc(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+    sentenceHtml=esc(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
 ">`;
@@ -1844,13 +1844,13 @@ function renderListenTF(q){
 function renderListenFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=maxLen*20+10;
+  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">`;
+    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">`;
   }
   return `<div class="lbox">
     <span class="listen-sub-badge">🎧 Nghe và điền từ</span>
@@ -1930,13 +1930,13 @@ function renderPicMCQ(q){
 function renderImgFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=maxLen*20+10;
+  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">`;
+    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">`;
   }
   const imgUrl=q.audioUrl||"";
   return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
@@ -2163,11 +2163,11 @@ function rpRenderBody(sq){
       <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
       <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
   }else if(t==="fill"){
-    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=maxLen*20+10;
+    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
     const parts=(sq.prompt||"").split("___");
     const sentHtml=parts.length>=2
-      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">${esc(parts.slice(1).join("___"))}`
-      :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">`;
+      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">${esc(parts.slice(1).join("___"))}`
+      :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">`;
     body.innerHTML=`<div class="fill-sentence">${sentHtml}</div>
       <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Kiểm tra</button>`;
     setTimeout(()=>{const fi=document.getElementById("rp-fi");if(fi)fi.focus();},50);
