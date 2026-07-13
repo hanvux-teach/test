@@ -179,10 +179,12 @@ textarea.inp{resize:vertical;min-height:70px}
  
 /* inline fill-in-blank */
 .fill-sentence{font-size:17px;font-weight:500;text-align:center;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:16px;line-height:2;word-break:break-word}
-.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 2px 4px 2px;min-width:40px;letter-spacing:8px;transition:.15s;border-radius:0;
+.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 4px 4px 2px;min-width:40px;letter-spacing:8px;transition:.15s;border-radius:0;
   background-image:linear-gradient(to right, var(--pur) 0, var(--pur) 1ch, transparent 1ch);
   background-repeat:repeat-x;
-  background-position:2px bottom;
+  background-position:0 bottom;
+  background-origin:content-box;
+  background-clip:content-box;
   background-size:calc(1ch + 8px) 3px;
 }
 .fill-blank:focus{background-image:linear-gradient(to right, var(--pur-d) 0, var(--pur-d) 1ch, transparent 1ch)}
@@ -1656,7 +1658,7 @@ function renderFill(q){
   // Build sentence with inline input replacing ___
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -1844,7 +1846,7 @@ function renderListenTF(q){
 function renderListenFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -1930,7 +1932,7 @@ function renderPicMCQ(q){
 function renderImgFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
@@ -2163,7 +2165,7 @@ function rpRenderBody(sq){
       <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
       <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
   }else if(t==="fill"){
-    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=`calc(${maxLen}ch + ${maxLen*8+10}px)`;
+    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=`calc(${maxLen} * (1ch + 8px))`;
     const parts=(sq.prompt||"").split("___");
     const sentHtml=parts.length>=2
       ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" oninput="this.value=this.value.slice(0,${maxLen});">${esc(parts.slice(1).join("___"))}`
