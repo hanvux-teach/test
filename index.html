@@ -179,10 +179,17 @@ textarea.inp{resize:vertical;min-height:70px}
  
 /* inline fill-in-blank */
 .fill-sentence{font-size:17px;font-weight:500;text-align:center;padding:18px 14px;background:var(--surf2);border-radius:var(--r);margin-bottom:16px;line-height:2;word-break:break-word}
-.fill-blank{display:inline-block;border:none;border-bottom:2.5px solid var(--pur);background:transparent;font-size:17px;font-weight:700;color:var(--pur);text-align:center;outline:none;padding:0 4px;min-width:40px;transition:.15s;border-radius:0}
-.fill-blank:focus{border-bottom-color:var(--pur-d)}
-.fill-blank.ok{color:var(--teal);border-bottom-color:var(--teal)}
-.fill-blank.bad{color:var(--red);border-bottom-color:var(--red)}
+.fill-blank{display:inline-block;border:none;background-color:transparent;font-family:'Consolas','Courier New',monospace;font-size:17px;font-weight:700;color:var(--pur);text-align:left;outline:none;padding:0 4px 4px 2px;min-width:40px;letter-spacing:8px;transition:.15s;border-radius:0;
+  background-image:linear-gradient(to right, var(--pur) 0, var(--pur) 1ch, transparent 1ch);
+  background-repeat:repeat-x;
+  background-position:0 bottom;
+  background-origin:content-box;
+  background-clip:content-box;
+  background-size:calc(1ch + 8px) 3px;
+}
+.fill-blank:focus{background-image:linear-gradient(to right, var(--pur-d) 0, var(--pur-d) 1ch, transparent 1ch)}
+.fill-blank.ok{color:var(--teal);background-image:linear-gradient(to right, var(--teal) 0, var(--teal) 1ch, transparent 1ch)}
+.fill-blank.bad{color:var(--red);background-image:linear-gradient(to right, var(--red) 0, var(--red) 1ch, transparent 1ch)}
 .fill-blank:disabled{cursor:default}
  
 /* underline toolbar for phonics */
@@ -302,13 +309,12 @@ textarea.inp{resize:vertical;min-height:70px}
   //    không bắt buộc phải chạy qua server/localhost/GitHub Pages nữa.
 
   const firebaseConfig = {
-    apiKey: "AIzaSyAeUshum2XLpnu0lDWLdNs57ljPVb6C8Jk",
-    authDomain: "english4-c80ae.firebaseapp.com",
-    projectId: "english4-c80ae",
-    storageBucket: "english4-c80ae.firebasestorage.app",
-    messagingSenderId: "149131311368",
-    appId: "1:149131311368:web:aee96f2efca2e7560694bd",
-    measurementId: "G-LMX3QZW2P7"
+    apiKey: "AIzaSyDE-8cAVHy2hS_B2DbaQ0dmg04Qbe1N3xM",
+    authDomain: "english-practice-3.firebaseapp.com",
+    projectId: "english-practice-3",
+    storageBucket: "english-practice-3.firebasestorage.app",
+    messagingSenderId: "1093845301216",
+    appId: "1:1093845301216:web:f62cac1fb9e92fda1fdd85"
   };
 
   const app = firebase.initializeApp(firebaseConfig);
@@ -2076,18 +2082,20 @@ function renderFill(q){
   // Build sentence with inline input replacing ___
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*13,50);
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
+  this.scrollLeft=0;
 ">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=esc(q.prompt||"")+` <input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" oninput="
+    sentenceHtml=esc(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
+  this.scrollLeft=0;
 ">`;
   }
   return `<div class="fill-sentence">${sentenceHtml}</div>
@@ -2264,13 +2272,13 @@ function renderListenTF(q){
 function renderListenFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*13,50);
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">`;
+    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
   }
   return `<div class="lbox">
     <span class="listen-sub-badge">🎧 Nghe và điền từ</span>
@@ -2350,13 +2358,13 @@ function renderPicMCQ(q){
 function renderImgFill(q){
   const ans=q.answer||"";
   const maxLen=Math.max(ans.length,3);
-  const width=Math.max(maxLen*14,60);
+  const width=`calc(${maxLen} * (1ch + 8px))`;
   const parts=(q.prompt||"").split("___");
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +esc(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()">`;
+    sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
   }
   const imgUrl=q.audioUrl||"";
   return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
@@ -2583,11 +2591,11 @@ function rpRenderBody(sq){
       <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
       <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
   }else if(t==="fill"){
-    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=Math.max(maxLen*13,50);
+    const ans=sq.answer||"";const maxLen=Math.max(ans.length,3);const width=`calc(${maxLen} * (1ch + 8px))`;
     const parts=(sq.prompt||"").split("___");
     const sentHtml=parts.length>=2
-      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">${esc(parts.slice(1).join("___"))}`
-      :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}px" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()">`;
+      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">${esc(parts.slice(1).join("___"))}`
+      :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
     body.innerHTML=`<div class="fill-sentence">${sentHtml}</div>
       <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Kiểm tra</button>`;
     setTimeout(()=>{const fi=document.getElementById("rp-fi");if(fi)fi.focus();},50);
