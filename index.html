@@ -562,15 +562,14 @@ textarea.inp{resize:vertical;min-height:70px}
   <div id="st-vocab" class="scr">
     <div class="card">
       <h2 style="font-size:14px;font-weight:600;margin-bottom:4px">🔤 Ôn từ vựng theo chủ đề</h2>
-      <p style="font-size:12px;color:var(--tx3);margin-bottom:14px">Chọn chủ đề để lật thẻ ghi nhớ hoặc làm bài kiểm tra từ vựng.</p>
-      <button class="btn btn-teal btn-block" style="margin-bottom:14px" onclick="openVocabMix()">🔀 Ôn từ vựng lẫn lộn (tất cả chủ đề)</button>
+      <p style="font-size:12px;color:var(--tx3);margin-bottom:14px">Chọn chủ đề để lật thẻ ghi nhớ hoặc luyện viết từ vựng.</p>
       <div class="tgrid" id="vocab-topic-grid"></div>
     </div>
   </div>
   <div id="st-mix" class="scr">
     <div class="card">
       <h2 style="font-size:15px;font-weight:600;margin-bottom:6px">Ôn tổng hợp</h2>
-      <p style="font-size:13px;color:var(--tx2);margin-bottom:14px">Trộn câu hỏi từ tất cả chủ đề — random hoàn toàn.</p>
+      <p style="font-size:13px;color:var(--tx2);margin-bottom:14px">Ôn tập tất cả chủ đề</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
         <div class="mcard" onclick="selMix(10,this)"><div class="mn">10</div><div class="ml">câu</div></div>
         <div class="mcard sel" onclick="selMix(20,this)"><div class="mn">20</div><div class="ml">câu</div></div>
@@ -620,7 +619,7 @@ textarea.inp{resize:vertical;min-height:70px}
       </div>
       <div class="vocab-mode-row">
         <button class="btn btn-sm btn-pur" id="vmode-flip" onclick="setVocabMode('flip')">🔄 Lật thẻ</button>
-        <button class="btn btn-sm" id="vmode-type" onclick="setVocabMode('type')">📝 Kiểm tra</button>
+        <button class="btn btn-sm" id="vmode-type" onclick="setVocabMode('type')">✍️ Viết từ</button>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -721,6 +720,19 @@ textarea.inp{resize:vertical;min-height:70px}
     <select class="inp" id="mv-topic"></select>
     <label class="lbl">Từ tiếng Anh</label>
     <input class="inp" id="mv-word" placeholder="apple">
+    <label class="lbl">Loại từ (tùy chọn)</label>
+    <select class="inp" id="mv-wordtype">
+      <option value="">— Không chọn —</option>
+      <option value="n">(n) — danh từ</option>
+      <option value="v">(v) — động từ</option>
+      <option value="adj">(adj) — tính từ</option>
+      <option value="adv">(adv) — trạng từ</option>
+      <option value="prep">(prep) — giới từ</option>
+      <option value="pron">(pron) — đại từ</option>
+      <option value="conj">(conj) — liên từ</option>
+      <option value="interj">(interj) — thán từ</option>
+      <option value="phr">(phr) — cụm từ</option>
+    </select>
     <label class="lbl">Phiên âm (tùy chọn)</label>
     <input class="inp" id="mv-phonetic" placeholder="/ˈæp.əl/">
     <label class="lbl">Nghĩa tiếng Việt</label>
@@ -741,9 +753,10 @@ textarea.inp{resize:vertical;min-height:70px}
     <h3>Import từ vựng từ CSV</h3>
     <div class="csv-info">
       <strong>Định dạng CSV:</strong><br>
-      Cột: <code>topic_id</code>, <code>word</code>, <code>meaning</code>, <code>phonetic</code>, <code>example</code><br><br>
+      Cột: <code>topic_id</code>, <code>word</code>, <code>meaning</code>, <code>word_type</code>, <code>phonetic</code>, <code>example</code><br>
+      (word_type, phonetic, example có thể để trống)<br><br>
       <strong>Ví dụ:</strong><br>
-      <code>animals,cat,con mèo,/kæt/,The cat is sleeping.</code>
+      <code>animals,cat,con mèo,n,/kæt/,The cat is sleeping.</code>
     </div>
     <label class="lbl">Chọn file CSV</label>
     <input type="file" accept=".csv,.txt" id="vocab-csv-file" class="inp">
@@ -912,10 +925,10 @@ function getTopicVocabStats(user,topicId){
 
 // ══════ STATE ══════
 let currentUser=null;
-let quizQueue=[],quizIdx=0,quizCorrect=0,quizTopicId=null,isMix=false,mixCount=20,isPreview=false;
+let quizQueue=[],quizIdx=0,quizCorrect=0,quizTopicId=null,isMix=false,mixCount=20;
 let arrangeState={placed:[],bank:[]};
 let currentAudio=null;
-let vocabQueue=[],vocabIdx=0,vocabTopicId=null,vocabMode="flip",vocabResults={known:0,mid:0,unknown:0},vocabTestCorrect=0;
+let vocabQueue=[],vocabIdx=0,vocabTopicId=null,vocabMode="flip",vocabResults={known:0,mid:0,unknown:0};
 
 function playAudio(url){
 
@@ -1189,7 +1202,6 @@ function renderQTable(){
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.prompt||""}</td>
         <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--teal);font-weight:600">${q.answer||""}</td>
         <td><div class="btn-row">
-          <button class="btn btn-sm btn-teal" onclick="previewQ('${q.id}')">👁 Xem trước</button>
           <button class="btn btn-sm" onclick="openQModal('${q.id}')">Sửa</button>
           <button class="btn btn-sm btn-red" onclick="deleteQ('${q.id}')">Xóa</button>
         </div></td>
@@ -1420,7 +1432,7 @@ function rpSubQExtra(sq,i){
   if(t==="drag-fill") return `<label class="lbl">Đáp án theo thứ tự (mỗi dòng)</label><textarea class="inp" rows="2" oninput="rpSubQs[${i}].answer=this.value">${esc(sq.answer||"")}</textarea><label class="lbl">Word box (mỗi dòng)</label><textarea class="inp" rows="3" oninput="rpSubQs[${i}].opts=this.value.split('\\n').filter(Boolean)">${esc((sq.opts||[]).join("\\n"))}</textarea><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" ${sq.anyOrder?"checked":""} onchange="rpSubQs[${i}].anyOrder=this.checked" style="width:auto;margin:0"> Thứ tự không quan trọng</label>`;
   return "";
 }
-function rpSubQChange(i,type){rpSubQs[i]={type,prompt:rpSubQs[i].prompt||"",answer:type==="tf"?"True":"",opts:[]};rpRenderSubQs();}
+function rpSubQChange(i,type){rpSubQs[i]={type,prompt:rpSubQs[i].prompt||"",answer:"",opts:[]};rpRenderSubQs();}
 function rpAddSubQ(){rpSubQs.push({type:"mcq",prompt:"",answer:"",opts:[]});rpRenderSubQs();}
 function rpRemoveSubQ(i){rpSubQs.splice(i,1);rpRenderSubQs();}
 function rpMoveSubQ(i,dir){
@@ -1485,7 +1497,6 @@ async function saveQ(){
     subQuestions=rpSubQs.map(sq=>{
       if(typeof sq.opts==="string")sq.opts=sq.opts.split("\n").map(x=>x.trim()).filter(Boolean);
       if(sq.type==="mcq-multi")sq.answer=(sq.answer||"").split("\n").map(x=>x.trim()).filter(Boolean).join("|");
-      if(sq.type==="tf"&&!sq.answer)sq.answer="True";
       return {type:sq.type,prompt:sq.prompt||"",answer:sq.answer||"",opts:sq.opts||[]};
     });
     answer="passage";
@@ -1607,12 +1618,13 @@ function renderVocabTable(){
   const wrap=document.getElementById("v-table-wrap");
   if(!vs.length){wrap.innerHTML='<div class="empty">Chưa có từ vựng nào.</div>';return;}
   wrap.innerHTML=`<table class="qtable">
-    <thead><tr><th>Chủ đề</th><th>Từ</th><th>Phiên âm</th><th>Nghĩa</th><th></th></tr></thead>
+    <thead><tr><th>Chủ đề</th><th>Từ</th><th>Loại từ</th><th>Phiên âm</th><th>Nghĩa</th><th></th></tr></thead>
     <tbody>${vs.map(v=>{
       const top=topics.find(t=>t.id===v.topicId);
       return `<tr>
         <td style="white-space:nowrap">${top?top.emoji+" "+top.name:v.topicId}</td>
         <td><strong>${esc(v.word)}</strong></td>
+        <td style="color:var(--tx3)">${v.wordType?"("+esc(v.wordType)+")":""}</td>
         <td style="color:var(--tx3)">${esc(v.phonetic||"")}</td>
         <td style="color:var(--teal);font-weight:600">${esc(v.meaning||"")}</td>
         <td><div class="btn-row">
@@ -1628,6 +1640,7 @@ function openVocabModal(id){
   const v=id?getVocab().find(x=>x.id===id):null;
   document.getElementById("mv-id").value=id||"";
   document.getElementById("mv-word").value=v?v.word:"";
+  document.getElementById("mv-wordtype").value=v?(v.wordType||""):"";
   document.getElementById("mv-phonetic").value=v?(v.phonetic||""):"";
   document.getElementById("mv-meaning").value=v?v.meaning:"";
   document.getElementById("mv-example").value=v?(v.example||""):"";
@@ -1640,6 +1653,7 @@ async function saveVocab(){
   const id=document.getElementById("mv-id").value;
   const topicId=document.getElementById("mv-topic").value;
   const word=document.getElementById("mv-word").value.trim();
+  const wordType=document.getElementById("mv-wordtype").value.trim();
   const phonetic=document.getElementById("mv-phonetic").value.trim();
   const meaning=document.getElementById("mv-meaning").value.trim();
   const example=document.getElementById("mv-example").value.trim();
@@ -1650,14 +1664,14 @@ async function saveVocab(){
 
     await window.fb.updateDoc(
       window.fb.doc(window.db,"vocab",existing.firestoreId),
-      {topicId,word,phonetic,meaning,example}
+      {topicId,word,wordType,phonetic,meaning,example}
     );
 
   }else{
 
     await window.fb.addDoc(
       window.fb.collection(window.db,"vocab"),
-      {id:"v"+Date.now(),topicId,word,phonetic,meaning,example}
+      {id:"v"+Date.now(),topicId,word,wordType,phonetic,meaning,example}
     );
 
   }
@@ -1688,12 +1702,12 @@ async function importVocabCSV(){
       for(const line of lines){
         const cols=parseCSVLine(line);
         if(cols.length<3)continue;
-        const [topicId,word,meaning,phonetic="",example=""]=cols;
+        const [topicId,word,meaning,wordType="",phonetic="",example=""]=cols;
         if(!topicId||!word||!meaning)continue;
         newVs.push({
           id:"vcsv"+Date.now()+Math.random().toString(36).slice(2),
           topicId:topicId.trim(),word:word.trim(),meaning:meaning.trim(),
-          phonetic:phonetic.trim(),example:example.trim()
+          wordType:wordType.trim(),phonetic:phonetic.trim(),example:example.trim()
         });
       }
       if(!newVs.length){document.getElementById("vocab-csv-err").classList.add("on");return;}
@@ -1868,18 +1882,8 @@ function openVocabTopic(topicId){
   const topic=getTopics().find(t=>t.id===topicId);
   vocabTopicId=topicId;
   vocabQueue=shuffled(words);
-  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0};vocabTestCorrect=0;
+  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0};
   document.getElementById("vocab-title").textContent=(topic?topic.emoji+" "+topic.name:"")+" — Từ vựng";
-  showScr("s-vocab");
-  setVocabMode(vocabMode);
-}
-function openVocabMix(){
-  const words=getVocab();
-  if(!words.length){alert("Chưa có từ vựng nào!");return;}
-  vocabTopicId="mix";
-  vocabQueue=shuffled(words);
-  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0};vocabTestCorrect=0;
-  document.getElementById("vocab-title").textContent="🔀 Từ vựng lẫn lộn — Tất cả chủ đề";
   showScr("s-vocab");
   setVocabMode(vocabMode);
 }
@@ -1903,7 +1907,7 @@ function renderVocabCard(){
         <div class="vocab-card" id="vcard" onclick="flipVocabCard()">
           <div class="vocab-card-inner">
             <div class="vocab-face vocab-face-front">
-              <div class="vocab-word">${esc(w.word)}</div>
+              <div class="vocab-word">${esc(w.word)}${w.wordType?` <span style="font-size:16px;color:var(--tx3);font-weight:400">(${esc(w.wordType)})</span>`:""}</div>
               ${w.phonetic?`<div class="vocab-phon">${esc(w.phonetic)}</div>`:""}
               <div class="vocab-hint">👆 Chạm để xem nghĩa</div>
             </div>
@@ -1954,47 +1958,31 @@ async function checkVocabType(){
   const ok=val===ans;
   inp.disabled=true;
   inp.classList.add(ok?"ok":"bad");
-  if(ok)vocabTestCorrect++;
-  await setWordStatus(currentUser,w.id,ok?"known":"unknown");
   document.getElementById("vtype-fb").innerHTML=`
-    <div class="fb on ${ok?'ok':'bad'}">${ok?"🎉 Chính xác!":"❌ Đáp án đúng: "+esc(w.word)}</div>
-    <button class="btn btn-pur btn-block" style="margin-top:12px" onclick="nextVocabTest()">${vocabIdx+1<vocabQueue.length?"Từ tiếp theo →":"Xem kết quả →"}</button>`;
+    <div class="fb on ${ok?'ok':'bad'}">${ok?"🎉 Chính xác!":"❌ Đáp án đúng: "+esc(w.word)+(w.wordType?" ("+esc(w.wordType)+")":"")}</div>
+    <div class="hint-lbl" style="text-align:center;margin:10px 0 6px">Bạn nhớ từ này ở mức nào?</div>
+    <div class="rate-row">
+      <button class="rate-btn rate-bad" onclick="rateVocab('unknown')">😵 Chưa nhớ</button>
+      <button class="rate-btn rate-mid" onclick="rateVocab('mid')">🙂 Bình thường</button>
+      <button class="rate-btn rate-good" onclick="rateVocab('known')">🤩 Nhớ rồi</button>
+    </div>`;
 }
-function nextVocabTest(){vocabIdx++;renderVocabCard();}
-async function showVocabResult(){
+function showVocabResult(){
   document.getElementById("vpfill").style.width="100%";
   const total=vocabQueue.length;
-  const reopen=vocabTopicId==="mix"?"openVocabMix()":`openVocabTopic('${vocabTopicId}')`;
-  if(vocabMode==="type"){
-    const pct=total?Math.round(vocabTestCorrect/total*100):0;
-    await setScore(currentUser,"vocabtest_"+vocabTopicId,pct);
-    const stars=pct>=90?"⭐⭐⭐":pct>=70?"⭐⭐":"⭐";
-    const msg=pct>=90?"Xuất sắc!":pct>=70?"Tốt lắm!":pct>=50?"Cần ôn thêm một chút!":"Xem lại và thử lại nhé!";
-    document.getElementById("vocab-body").innerHTML=`<div class="res-wrap">
-      <div class="res-pct">${pct}%</div>
-      <div class="res-lbl">${vocabTestCorrect} / ${total} từ đúng</div>
-      <div class="res-stars">${stars}</div>
-      <div style="color:var(--tx2);font-size:14px;margin-bottom:20px">${msg}</div>
-      <div class="btn-row" style="justify-content:center">
-        <button class="btn btn-pur" onclick="${reopen}">Làm lại</button>
-        <button class="btn" onclick="exitVocab()">Về trang chủ</button>
-      </div>
-    </div>`;
-  }else{
-    document.getElementById("vocab-body").innerHTML=`<div class="res-wrap">
-      <div style="font-size:40px">🎉</div>
-      <div style="font-size:15px;font-weight:600;margin:8px 0 16px">Đã ôn xong ${total} từ!</div>
-      <div class="sgrid">
-        <div class="sbox"><div class="sn" style="color:var(--red)">${vocabResults.unknown||0}</div><div class="sl">Chưa nhớ</div></div>
-        <div class="sbox"><div class="sn" style="color:var(--amb)">${vocabResults.mid||0}</div><div class="sl">Bình thường</div></div>
-        <div class="sbox"><div class="sn" style="color:var(--teal)">${vocabResults.known||0}</div><div class="sl">Đã nhớ</div></div>
-      </div>
-      <div class="btn-row" style="justify-content:center;margin-top:18px">
-        <button class="btn btn-pur" onclick="${reopen}">Ôn lại</button>
-        <button class="btn" onclick="exitVocab()">Về trang chủ</button>
-      </div>
-    </div>`;
-  }
+  document.getElementById("vocab-body").innerHTML=`<div class="res-wrap">
+    <div style="font-size:40px">🎉</div>
+    <div style="font-size:15px;font-weight:600;margin:8px 0 16px">Đã ôn xong ${total} từ!</div>
+    <div class="sgrid">
+      <div class="sbox"><div class="sn" style="color:var(--red)">${vocabResults.unknown||0}</div><div class="sl">Chưa nhớ</div></div>
+      <div class="sbox"><div class="sn" style="color:var(--amb)">${vocabResults.mid||0}</div><div class="sl">Bình thường</div></div>
+      <div class="sbox"><div class="sn" style="color:var(--teal)">${vocabResults.known||0}</div><div class="sl">Đã nhớ</div></div>
+    </div>
+    <div class="btn-row" style="justify-content:center;margin-top:18px">
+      <button class="btn btn-pur" onclick="openVocabTopic('${vocabTopicId}')">Ôn lại</button>
+      <button class="btn" onclick="exitVocab()">Về trang chủ</button>
+    </div>
+  </div>`;
 }
 function exitVocab(){showScr("s-main");sTab("vocab");}
 
@@ -2059,19 +2047,7 @@ function startMix(){
   quizIdx=0;quizCorrect=0;
   showScr("s-quiz");renderQ();
 }
-function exitQuiz(){
-  window.speechSynthesis&&window.speechSynthesis.cancel();
-  if(isPreview){isPreview=false;showScr("s-admin");aTab("questions");return;}
-  showScr("s-main");if(isMix){sTab("mix");}else{renderTopicGrid();}
-}
-function previewQ(id){
-  const q=getQs().find(x=>x.id===id);
-  if(!q){alert("Không tìm thấy câu hỏi!");return;}
-  isPreview=true;isMix=false;quizTopicId=q.topicId;
-  document.getElementById("quiz-title").textContent="👁 Xem trước câu hỏi";
-  quizQueue=[q];quizIdx=0;quizCorrect=0;
-  showScr("s-quiz");renderQ();
-}
+function exitQuiz(){window.speechSynthesis&&window.speechSynthesis.cancel();showScr("s-main");if(isMix){sTab("mix");}else{renderTopicGrid();}}
 
 function renderQ(){
   const total=quizQueue.length;
@@ -2680,7 +2656,7 @@ function rpShowResult(){
   const {subQs,correct}=rpQuizState;const total=subQs.length;
   const pct=total?Math.round(correct/total*100):0;
   const stars=pct>=90?"⭐⭐⭐":pct>=70?"⭐⭐":"⭐";
-  quizCorrect+=correct;
+  if(pct>=70)quizCorrect++;
   const area=document.getElementById("rp-qarea");if(!area)return;
   area.innerHTML=`<div class="rp-qblock" style="text-align:center;padding:20px">
     <div style="font-size:36px;font-weight:700;color:var(--pur)">${pct}%</div>
@@ -2811,29 +2787,24 @@ function showFB(ok,ans){
   fb.className="fb on "+(ok?"ok":"bad");
   fb.textContent=ok?"🎉 Chính xác!":"❌ Sai! Đáp án: "+ans;
 }
-function quizTotalUnits(){
-  return quizQueue.reduce((s,q)=>s+(q.type==="reading-passage"?((q.subQuestions&&q.subQuestions.length)||0):1),0);
-}
 async function showResult(){
-  const total=quizTotalUnits();const pct=total?Math.round(quizCorrect/total*100):0;
-  if(!isPreview){
-    await setScore(
-      currentUser,
-      quizTopicId,
-      pct
-    );
-  }
+  const total=quizQueue.length;const pct=Math.round(quizCorrect/total*100);
+  await setScore(
+    currentUser,
+    quizTopicId,
+    pct
+  );
   document.getElementById("qpfill").style.width="100%";
   const stars=pct>=90?"⭐⭐⭐":pct>=70?"⭐⭐":"⭐";
-  const msg=isPreview?"Xem trước hoàn tất — điểm này không được lưu lại.":(pct>=90?"Xuất sắc!":pct>=70?"Tốt lắm!":pct>=50?"Cần ôn thêm một chút!":"Xem lại và thử lại nhé!");
+  const msg=pct>=90?"Xuất sắc!":pct>=70?"Tốt lắm!":pct>=50?"Cần ôn thêm một chút!":"Xem lại và thử lại nhé!";
   document.getElementById("quiz-body").innerHTML=`<div class="res-wrap">
     <div class="res-pct">${pct}%</div>
     <div class="res-lbl">${quizCorrect} / ${total} câu đúng</div>
     <div class="res-stars">${stars}</div>
     <div style="color:var(--tx2);font-size:14px;margin-bottom:20px">${msg}</div>
     <div class="btn-row" style="justify-content:center">
-      ${isPreview?`<button class="btn" onclick="exitQuiz()">← Về danh sách câu hỏi</button>`:(isMix?`<button class="btn btn-pur" onclick="startMix()">Làm lại</button>`:`<button class="btn btn-pur" onclick="startTopicQuiz('${quizTopicId}')">Làm lại</button>`)}
-      ${isPreview?"":`<button class="btn" onclick="exitQuiz()">Về trang chủ</button>`}
+      ${isMix?`<button class="btn btn-pur" onclick="startMix()">Làm lại</button>`:`<button class="btn btn-pur" onclick="startTopicQuiz('${quizTopicId}')">Làm lại</button>`}
+      <button class="btn" onclick="exitQuiz()">Về trang chủ</button>
     </div>
   </div>`;
 }
@@ -2841,8 +2812,7 @@ async function showResult(){
 // ══════ MODAL HELPERS ══════
 function openMod(id){document.getElementById(id).classList.add("on");}
 function closeMod(id){document.getElementById(id).classList.remove("on");}
-// Modals now only close via their explicit "Hủy"/close buttons (calling closeMod),
-// not by clicking the overlay — prevents accidentally losing in-progress edits.
+document.addEventListener("click",e=>{if(e.target.classList.contains("modal-bg"))e.target.classList.remove("on");});
 
 // ══════ UTILS ══════
 function shuffled(a){return [...a].sort(()=>Math.random()-.5);}
