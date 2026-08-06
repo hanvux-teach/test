@@ -498,6 +498,7 @@ textarea.inp{resize:vertical;min-height:70px}
       <div class="frow">
         <select class="inp" id="v-filter-topic" onchange="renderVocabTable()"><option value="">Tất cả chủ đề</option></select>
         <input class="inp" id="v-search" placeholder="Tìm từ..." oninput="renderVocabTable()" style="max-width:200px">
+        <button class="btn btn-red btn-sm" onclick="deleteVocabByTopic()">🗑 Xóa tất cả từ của chủ đề</button>
       </div>
       <div id="v-table-wrap" style="overflow-x:auto"></div>
     </div>
@@ -1684,6 +1685,20 @@ async function deleteVocabWord(id){
   if(!v?.firestoreId){alert("Không tìm thấy Firestore ID");return;}
   await window.fb.deleteDoc(window.fb.doc(window.db,"vocab",v.firestoreId));
   renderVocabTable();
+}
+async function deleteVocabByTopic(){
+  const topicId=document.getElementById("v-filter-topic").value;
+  if(!topicId){alert("Vui lòng chọn 1 chủ đề ở bộ lọc trước khi xóa.");return;}
+  const topics=getTopics();
+  const top=topics.find(t=>t.id===topicId);
+  const list=getVocab().filter(v=>v.topicId===topicId);
+  if(!list.length){alert("Chủ đề này chưa có từ vựng nào.");return;}
+  if(!confirm(`Xóa toàn bộ ${list.length} từ vựng của chủ đề "${top?top.name:topicId}"? Hành động này không thể hoàn tác.`))return;
+  for(const v of list){
+    if(v.firestoreId)await window.fb.deleteDoc(window.fb.doc(window.db,"vocab",v.firestoreId));
+  }
+  renderVocabTable();
+  alert(`Đã xóa ${list.length} từ vựng.`);
 }
 function openVocabCsvModal(){
   document.getElementById("vocab-csv-file").value="";
