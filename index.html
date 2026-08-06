@@ -280,6 +280,9 @@ textarea.inp{resize:vertical;min-height:70px}
 .vocab-meaning{font-size:22px;font-weight:700;color:var(--teal);word-break:break-word}
 .vocab-example{font-size:13px;color:var(--tx2);margin-top:10px;font-style:italic}
 .vocab-hint{font-size:11px;color:var(--tx3);margin-top:14px}
+.vocab-speak-btn{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bord2);background:var(--surf);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.vocab-speak-btn:hover{background:var(--pur-l);border-color:var(--pur-m)}
+.vocab-speak-btn:active{transform:scale(.92)}
 .rate-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
 .rate-btn{padding:12px 6px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf);cursor:pointer;font-size:12px;font-weight:600;text-align:center;transition:.15s}
 .rate-btn:hover{transform:translateY(-1px)}
@@ -1878,7 +1881,12 @@ function renderVocabTopicGrid(){
   if(!grid)return;
   const topics=getTopics();
   if(!topics.length){grid.innerHTML='<div class="empty">Chưa có chủ đề nào.</div>';return;}
-  grid.innerHTML=topics.map(t=>{
+  const mixCard=getVocab().length?`<div class="tcard" style="border-color:var(--pur)" onclick="openVocabMix()">
+      <div class="tc-em">🔀</div>
+      <div class="tc-name">Ôn tổng hợp</div>
+      <div class="tc-meta">${getVocab().length} từ • tất cả chủ đề</div>
+    </div>`:"";
+  grid.innerHTML=mixCard+topics.map(t=>{
     const stats=getTopicVocabStats(currentUser,t.id);
     const pct=stats.total?Math.round(stats.known/stats.total*100):0;
     const fc=pct>=80?"g":pct>=50?"y":"";
@@ -1897,8 +1905,18 @@ function openVocabTopic(topicId){
   const topic=getTopics().find(t=>t.id===topicId);
   vocabTopicId=topicId;
   vocabQueue=shuffled(words);
-  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0};
+  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0,correct:0,wrong:0};
   document.getElementById("vocab-title").textContent=(topic?topic.emoji+" "+topic.name:"")+" — Từ vựng";
+  showScr("s-vocab");
+  setVocabMode(vocabMode);
+}
+function openVocabMix(){
+  const words=getVocab();
+  if(!words.length){alert("Chưa có từ vựng nào!");return;}
+  vocabTopicId="mix";
+  vocabQueue=shuffled(words);
+  vocabIdx=0;vocabResults={known:0,mid:0,unknown:0,correct:0,wrong:0};
+  document.getElementById("vocab-title").textContent="🔀 Ôn tổng hợp — Từ vựng (tất cả chủ đề)";
   showScr("s-vocab");
   setVocabMode(vocabMode);
 }
@@ -1922,11 +1940,13 @@ function renderVocabCard(){
         <div class="vocab-card" id="vcard" onclick="flipVocabCard()">
           <div class="vocab-card-inner">
             <div class="vocab-face vocab-face-front">
+              <button class="vocab-speak-btn" onclick="event.stopPropagation();speak(${escJs(w.word)})" title="Nghe phát âm">🔊</button>
               <div class="vocab-word">${esc(w.word)}${w.wordType?` <span style="font-size:16px;color:var(--tx3);font-weight:400">(${esc(w.wordType)})</span>`:""}</div>
               ${w.phonetic?`<div class="vocab-phon">${esc(w.phonetic)}</div>`:""}
               <div class="vocab-hint">👆 Chạm để xem nghĩa</div>
             </div>
             <div class="vocab-face vocab-face-back">
+              <button class="vocab-speak-btn" onclick="event.stopPropagation();speak(${escJs(w.word)})" title="Nghe phát âm">🔊</button>
               <div class="vocab-meaning">${esc(w.meaning)}</div>
               ${w.example?`<div class="vocab-example">"${esc(w.example)}"</div>`:""}
               <div class="vocab-hint">👆 Chạm để lật lại</div>
@@ -1973,8 +1993,11 @@ async function checkVocabType(){
   const ok=val===ans;
   inp.disabled=true;
   inp.classList.add(ok?"ok":"bad");
+  vocabResults[ok?"correct":"wrong"]=(vocabResults[ok?"correct":"wrong"]||0)+1;
   document.getElementById("vtype-fb").innerHTML=`
-    <div class="fb on ${ok?'ok':'bad'}">${ok?"🎉 Chính xác!":"❌ Đáp án đúng: "+esc(w.word)+(w.wordType?" ("+esc(w.wordType)+")":"")}</div>
+    <div class="fb on ${ok?'ok':'bad'}">${ok?"🎉 Chính xác!":"❌ Đáp án đúng: "+esc(w.word)+(w.wordType?" ("+esc(w.wordType)+")":"")}
+      <button class="vocab-speak-btn" style="position:static;display:inline-flex;width:26px;height:26px;font-size:12px;vertical-align:middle;margin-left:6px" onclick="speak(${escJs(w.word)})" title="Nghe phát âm">🔊</button>
+    </div>
     <div class="hint-lbl" style="text-align:center;margin:10px 0 6px">Bạn nhớ từ này ở mức nào?</div>
     <div class="rate-row">
       <button class="rate-btn rate-bad" onclick="rateVocab('unknown')">😵 Chưa nhớ</button>
@@ -1985,16 +2008,32 @@ async function checkVocabType(){
 function showVocabResult(){
   document.getElementById("vpfill").style.width="100%";
   const total=vocabQueue.length;
+  const wAttempts=(vocabResults.correct||0)+(vocabResults.wrong||0);
+  let scoreBox="";
+  let pct=0;
+  if(wAttempts>0){
+    pct=Math.round((vocabResults.correct||0)/wAttempts*100);
+    scoreBox=`
+    <div class="hint-lbl" style="text-align:center;margin-bottom:6px">Điểm bài viết từ vựng</div>
+    <div class="sgrid" style="margin-bottom:14px">
+      <div class="sbox"><div class="sn" style="color:var(--teal)">${vocabResults.correct||0}/${wAttempts}</div><div class="sl">Đúng</div></div>
+      <div class="sbox"><div class="sn" style="color:${pct>=80?'var(--teal)':pct>=50?'var(--amb)':'var(--red)'}">${pct}%</div><div class="sl">Điểm</div></div>
+    </div>`;
+    setScore(currentUser,"vwrite_"+(vocabTopicId||"mix"),pct);
+  }
+  const reviewBtn=vocabTopicId==="mix"?`<button class="btn btn-pur" onclick="openVocabMix()">Ôn lại</button>`:`<button class="btn btn-pur" onclick="openVocabTopic('${vocabTopicId}')">Ôn lại</button>`;
   document.getElementById("vocab-body").innerHTML=`<div class="res-wrap">
     <div style="font-size:40px">🎉</div>
     <div style="font-size:15px;font-weight:600;margin:8px 0 16px">Đã ôn xong ${total} từ!</div>
+    ${scoreBox}
+    <div class="hint-lbl" style="text-align:center;margin-bottom:6px">Mức độ ghi nhớ</div>
     <div class="sgrid">
       <div class="sbox"><div class="sn" style="color:var(--red)">${vocabResults.unknown||0}</div><div class="sl">Chưa nhớ</div></div>
       <div class="sbox"><div class="sn" style="color:var(--amb)">${vocabResults.mid||0}</div><div class="sl">Bình thường</div></div>
       <div class="sbox"><div class="sn" style="color:var(--teal)">${vocabResults.known||0}</div><div class="sl">Đã nhớ</div></div>
     </div>
     <div class="btn-row" style="justify-content:center;margin-top:18px">
-      <button class="btn btn-pur" onclick="openVocabTopic('${vocabTopicId}')">Ôn lại</button>
+      ${reviewBtn}
       <button class="btn" onclick="exitVocab()">Về trang chủ</button>
     </div>
   </div>`;
