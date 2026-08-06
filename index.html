@@ -283,6 +283,8 @@ textarea.inp{resize:vertical;min-height:70px}
 .vocab-speak-btn{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bord2);background:var(--surf);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
 .vocab-speak-btn:hover{background:var(--pur-l);border-color:var(--pur-m)}
 .vocab-speak-btn:active{transform:scale(.92)}
+.vocab-card-actions{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.vocab-card-actions .btn{width:100%}
 .rate-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
 .rate-btn{padding:12px 6px;border-radius:var(--rs);border:1.5px solid var(--bord);background:var(--surf);cursor:pointer;font-size:12px;font-weight:600;text-align:center;transition:.15s}
 .rate-btn:hover{transform:translateY(-1px)}
@@ -566,7 +568,7 @@ textarea.inp{resize:vertical;min-height:70px}
   <div id="st-vocab" class="scr">
     <div class="card">
       <h2 style="font-size:14px;font-weight:600;margin-bottom:4px">🔤 Ôn từ vựng theo chủ đề</h2>
-      <p style="font-size:12px;color:var(--tx3);margin-bottom:14px">Chọn chủ đề để lật thẻ ghi nhớ hoặc luyện viết từ vựng.</p>
+      <p style="font-size:12px;color:var(--tx3);margin-bottom:14px">Chọn <strong>🔄 Lật thẻ</strong> để ghi nhớ nghĩa, hoặc <strong>✍️ Bài tập viết</strong> để luyện viết chính tả và tính điểm.</p>
       <div class="tgrid" id="vocab-topic-grid"></div>
     </div>
   </div>
@@ -616,15 +618,9 @@ textarea.inp{resize:vertical;min-height:70px}
 <!-- ═══ VOCAB FLASHCARD SESSION ═══ -->
 <div id="s-vocab" class="scr">
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-sm" onclick="exitVocab()">← Thoát</button>
-        <span id="vocab-title" style="font-size:14px;font-weight:600"></span>
-      </div>
-      <div class="vocab-mode-row">
-        <button class="btn btn-sm btn-pur" id="vmode-flip" onclick="setVocabMode('flip')">🔄 Lật thẻ</button>
-        <button class="btn btn-sm" id="vmode-type" onclick="setVocabMode('type')">✍️ Viết từ</button>
-      </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="exitVocab()">← Thoát</button>
+      <span id="vocab-title" style="font-size:14px;font-weight:600"></span>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <span style="font-size:12px;color:var(--tx3)" id="v-ctr"></span>
@@ -1881,50 +1877,58 @@ function renderVocabTopicGrid(){
   if(!grid)return;
   const topics=getTopics();
   if(!topics.length){grid.innerHTML='<div class="empty">Chưa có chủ đề nào.</div>';return;}
-  const mixCard=getVocab().length?`<div class="tcard" style="border-color:var(--pur)" onclick="openVocabMix()">
+  const totalWords=getVocab().length;
+  const mixWriteSc=getScore(currentUser,"vwrite_mix");
+  const mixCard=totalWords?`<div class="tcard" style="border-color:var(--pur);cursor:default">
       <div class="tc-em">🔀</div>
       <div class="tc-name">Ôn tổng hợp</div>
-      <div class="tc-meta">${getVocab().length} từ • tất cả chủ đề</div>
+      <div class="tc-meta">${totalWords} từ • tất cả chủ đề${mixWriteSc.attempts?" • Điểm viết: "+getAvgScore(mixWriteSc)+"%":""}</div>
+      <div class="vocab-card-actions">
+        <button class="btn btn-sm btn-pur" onclick="openVocabMix('flip')">🔄 Lật thẻ</button>
+        <button class="btn btn-sm btn-teal" onclick="openVocabMix('type')">✍️ Bài tập viết</button>
+      </div>
     </div>`:"";
   grid.innerHTML=mixCard+topics.map(t=>{
     const stats=getTopicVocabStats(currentUser,t.id);
     const pct=stats.total?Math.round(stats.known/stats.total*100):0;
     const fc=pct>=80?"g":pct>=50?"y":"";
-    return `<div class="tcard" onclick="openVocabTopic('${t.id}')">
+    const writeSc=getScore(currentUser,"vwrite_"+t.id);
+    return `<div class="tcard" style="cursor:default">
       <div class="tc-em">${t.emoji}</div>
       <div class="tc-name">${t.name}</div>
       <div class="tc-meta">${stats.total} từ vựng</div>
       <div class="pbar"><div class="pfill ${fc}" style="width:${pct}%"></div></div>
-      <div style="font-size:11px;color:var(--tx3);margin-top:4px">${stats.total?pct+"% đã nhớ":"Chưa có từ"}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px">${stats.total?pct+"% đã nhớ":"Chưa có từ"}${writeSc.attempts?" • Điểm viết: "+getAvgScore(writeSc)+"%":""}</div>
+      <div class="vocab-card-actions">
+        <button class="btn btn-sm btn-pur" onclick="openVocabTopic('${t.id}','flip')">🔄 Lật thẻ</button>
+        <button class="btn btn-sm btn-teal" onclick="openVocabTopic('${t.id}','type')">✍️ Bài tập viết</button>
+      </div>
     </div>`;
   }).join("");
 }
-function openVocabTopic(topicId){
+function openVocabTopic(topicId,mode){
   const words=getVocab().filter(w=>w.topicId===topicId);
   if(!words.length){alert("Chủ đề này chưa có từ vựng nào!");return;}
   const topic=getTopics().find(t=>t.id===topicId);
   vocabTopicId=topicId;
+  vocabMode=mode||"flip";
   vocabQueue=shuffled(words);
   vocabIdx=0;vocabResults={known:0,mid:0,unknown:0,correct:0,wrong:0};
-  document.getElementById("vocab-title").textContent=(topic?topic.emoji+" "+topic.name:"")+" — Từ vựng";
+  const modeLabel=vocabMode==="type"?"✍️ Bài tập viết":"🔄 Lật thẻ";
+  document.getElementById("vocab-title").textContent=(topic?topic.emoji+" "+topic.name:"")+" — "+modeLabel;
   showScr("s-vocab");
-  setVocabMode(vocabMode);
+  renderVocabCard();
 }
-function openVocabMix(){
+function openVocabMix(mode){
   const words=getVocab();
   if(!words.length){alert("Chưa có từ vựng nào!");return;}
   vocabTopicId="mix";
+  vocabMode=mode||"flip";
   vocabQueue=shuffled(words);
   vocabIdx=0;vocabResults={known:0,mid:0,unknown:0,correct:0,wrong:0};
-  document.getElementById("vocab-title").textContent="🔀 Ôn tổng hợp — Từ vựng (tất cả chủ đề)";
+  const modeLabel=vocabMode==="type"?"✍️ Bài tập viết":"🔄 Lật thẻ";
+  document.getElementById("vocab-title").textContent="🔀 Ôn tổng hợp — "+modeLabel+" (tất cả chủ đề)";
   showScr("s-vocab");
-  setVocabMode(vocabMode);
-}
-function setVocabMode(mode){
-  vocabMode=mode;
-  const fb=document.getElementById("vmode-flip"),tb=document.getElementById("vmode-type");
-  if(fb)fb.classList.toggle("btn-pur",mode==="flip");
-  if(tb)tb.classList.toggle("btn-pur",mode==="type");
   renderVocabCard();
 }
 function renderVocabCard(){
@@ -2021,7 +2025,7 @@ function showVocabResult(){
     </div>`;
     setScore(currentUser,"vwrite_"+(vocabTopicId||"mix"),pct);
   }
-  const reviewBtn=vocabTopicId==="mix"?`<button class="btn btn-pur" onclick="openVocabMix()">Ôn lại</button>`:`<button class="btn btn-pur" onclick="openVocabTopic('${vocabTopicId}')">Ôn lại</button>`;
+  const reviewBtn=vocabTopicId==="mix"?`<button class="btn btn-pur" onclick="openVocabMix('${vocabMode}')">Ôn lại</button>`:`<button class="btn btn-pur" onclick="openVocabTopic('${vocabTopicId}','${vocabMode}')">Ôn lại</button>`;
   document.getElementById("vocab-body").innerHTML=`<div class="res-wrap">
     <div style="font-size:40px">🎉</div>
     <div style="font-size:15px;font-weight:600;margin:8px 0 16px">Đã ôn xong ${total} từ!</div>
@@ -2284,10 +2288,37 @@ function renderListen(q){
     onclick="nextQ()"
   ></button>`;
 }
+// Pick the most natural-sounding English voice the browser/OS offers.
+// No API keys or audio files needed — this just picks the best built-in
+// system/browser voice available (e.g. Chrome's "Google US English",
+// Edge's "Online (Natural)" voices, or iOS/macOS's enhanced voices).
+let _voicesCache=[];
+function _loadVoices(){if(window.speechSynthesis)_voicesCache=window.speechSynthesis.getVoices();}
+if(window.speechSynthesis){
+  _loadVoices();
+  window.speechSynthesis.onvoiceschanged=_loadVoices;
+}
+function pickBestVoice(){
+  if(!_voicesCache.length)_loadVoices();
+  const en=_voicesCache.filter(v=>/^en[-_](US|GB)/i.test(v.lang));
+  const pool=en.length?en:_voicesCache;
+  if(!pool.length)return null;
+  // Roughly best -> worst: cloud/neural voices first, then common good system voices.
+  const preferRe=[/Natural/i,/Neural/i,/Online/i,/Premium/i,/Enhanced/i,/Wavenet/i,
+    /Google US English/i,/Google UK English/i,/Samantha/i,/Aria/i,/Jenny/i,/Daniel/i];
+  for(const re of preferRe){
+    const m=pool.find(v=>re.test(v.name));
+    if(m)return m;
+  }
+  return pool.find(v=>/en-US/i.test(v.lang))||pool[0];
+}
 function speak(w){
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=0.85;
+  const u=new SpeechSynthesisUtterance(w);
+  const voice=pickBestVoice();
+  if(voice){u.voice=voice;u.lang=voice.lang;}else{u.lang="en-US";}
+  u.rate=0.9;u.pitch=1;
   window.speechSynthesis.speak(u);
 }
 
