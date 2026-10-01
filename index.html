@@ -838,11 +838,18 @@ body.exammode #exam-body .nxbt{display:none!important}
     </div>
     <label class="lbl">Chọn file CSV</label>
     <input type="file" accept=".csv,.txt" id="csv-file" class="inp">
+    <div id="csv-progress-wrap" style="display:none;margin-top:4px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);margin-bottom:5px">
+        <span id="csv-progress-label">Đang import...</span>
+        <span id="csv-progress-count">0 / 0</span>
+      </div>
+      <div class="qprog"><div class="qpfill" id="csv-progress-fill" style="width:0%"></div></div>
+    </div>
     <div id="csv-preview" style="font-size:12px;color:var(--tx2);margin-top:8px"></div>
     <div class="err-msg" id="csv-err">Lỗi đọc file! Kiểm tra lại định dạng.</div>
     <div class="modal-foot">
-      <button class="btn" onclick="closeMod('modal-csv')">Hủy</button>
-      <button class="btn btn-pur" onclick="importCSV()">Import</button>
+      <button class="btn" id="csv-cancel-btn" onclick="closeMod('modal-csv')">Hủy</button>
+      <button class="btn btn-pur" id="csv-import-btn" onclick="importCSV()">Import</button>
     </div>
   </div>
 </div>
@@ -1722,6 +1729,10 @@ function openCsvModal(bank,examId){
   document.getElementById("csv-file").value="";
   document.getElementById("csv-preview").textContent="";
   document.getElementById("csv-err").classList.remove("on");
+  document.getElementById("csv-progress-wrap").style.display="none";
+  document.getElementById("csv-progress-fill").style.width="0%";
+  document.getElementById("csv-progress-count").textContent="0 / 0";
+  const importBtn=document.getElementById("csv-import-btn");if(importBtn){importBtn.disabled=false;importBtn.textContent="Import";}
   const info=document.getElementById("csv-info-text");
   if(bank==="exam"){
     info.innerHTML=`<strong>Định dạng CSV (câu hỏi Đề thi thử):</strong><br>
@@ -1746,9 +1757,17 @@ function openCsvModal(bank,examId){
 async function importCSV(){
   const bank=document.getElementById("csv-bank")?document.getElementById("csv-bank").value:"topic";
   const file=document.getElementById("csv-file").files[0];
-  if(!file){document.getElementById("csv-err").classList.add("on");return;}
+  document.getElementById("csv-err").classList.remove("on");
+  document.getElementById("csv-preview").textContent="";
+  if(!file){document.getElementById("csv-err").textContent="Hãy chọn 1 file CSV trước!";document.getElementById("csv-err").classList.add("on");return;}
   const reader=new FileReader();
   reader.onload = async e => {
+    const progWrap=document.getElementById("csv-progress-wrap");
+    const progFill=document.getElementById("csv-progress-fill");
+    const progCount=document.getElementById("csv-progress-count");
+    const progLabel=document.getElementById("csv-progress-label");
+    const importBtn=document.getElementById("csv-import-btn");
+    const cancelBtn=document.getElementById("csv-cancel-btn");
     try{
       const lines=e.target.result.split("\n").filter(l=>l.trim());
       const newQs=[];
@@ -1762,29 +1781,57 @@ async function importCSV(){
         const base={id:"csv"+Date.now()+Math.random().toString(36).slice(2),type:type.trim(),prompt:prompt.trim(),answer:answer.trim(),opts,extra:(extra||"").trim()};
         newQs.push(bank==="exam"?{...base,examId:bankId.trim()}:{...base,topicId:bankId.trim()});
       }
-      if(!newQs.length){document.getElementById("csv-err").classList.add("on");return;}
+      if(!newQs.length){document.getElementById("csv-err").textContent="Không đọc được câu hỏi nào hợp lệ từ file này. Kiểm tra lại định dạng cột.";document.getElementById("csv-err").classList.add("on");return;}
+
+      const total=newQs.length;
+      progWrap.style.display="block";
+      progLabel.textContent="Đang tải lên Firebase...";
+      progCount.textContent="0 / "+total;
+      progFill.style.width="0%";
+      if(importBtn){importBtn.disabled=true;importBtn.textContent="Đang import...";}
+      if(cancelBtn)cancelBtn.disabled=true;
+
       const collName=bank==="exam"?"examQuestions":"questions";
+      let done=0,failed=0;
       for(const q of newQs){
-
-        await window.fb.addDoc(
-          window.fb.collection(
-            window.db,
-            collName
-          ),
-          q
-        );
-
+        try{
+          await window.fb.addDoc(
+            window.fb.collection(
+              window.db,
+              collName
+            ),
+            q
+          );
+          done++;
+        }catch(errOne){
+          failed++;
+          console.error("importCSV: lỗi 1 câu:",errOne,q);
+        }
+        progCount.textContent=(done+failed)+" / "+total;
+        progFill.style.width=Math.round((done+failed)/total*100)+"%";
       }
 
-      document.getElementById("csv-preview").textContent =
-        "✓ Đã import " + newQs.length + " câu hỏi.";
+      if(cancelBtn)cancelBtn.disabled=false;
+      if(importBtn){importBtn.disabled=false;importBtn.textContent="Import";}
 
-      setTimeout(()=>{
-        closeMod("modal-csv");
-        if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
-      },1000);
+      if(failed>0){
+        progLabel.textContent="Hoàn tất (có lỗi)";
+        document.getElementById("csv-preview").textContent =
+          "⚠️ Đã import " + done + " / " + total + " câu. " + failed + " câu bị lỗi (xem Console - F12 để biết chi tiết, thường do mất quyền ghi Firestore giữa chừng).";
+      }else{
+        progLabel.textContent="Hoàn tất!";
+        document.getElementById("csv-preview").textContent =
+          "✓ Đã import xong " + done + " / " + total + " câu hỏi.";
+        setTimeout(()=>{
+          closeMod("modal-csv");
+          if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
+        },1200);
+      }
+      if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
     }catch(err){
       console.error("importCSV error:",err);
+      if(importBtn){importBtn.disabled=false;importBtn.textContent="Import";}
+      if(cancelBtn)cancelBtn.disabled=false;
       const errEl=document.getElementById("csv-err");
       errEl.textContent="❌ Lỗi: "+(err&&err.message?err.message:err)+(/permission/i.test(err&&err.message||"")?" — Vào Firebase Console → Firestore Database → Rules, thêm quyền đọc/ghi cho collection '"+(bank==="exam"?"examQuestions":"questions")+"'.":"");
       errEl.classList.add("on");
