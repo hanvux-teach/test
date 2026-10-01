@@ -54,6 +54,8 @@ textarea.inp{resize:vertical;min-height:70px}
 .btn-red{border-color:var(--red);color:var(--red)}
 .btn-red:hover{background:var(--red-l)}
 .btn-teal{border-color:var(--teal);color:var(--teal)}
+.btn-amb{border-color:var(--amb);color:var(--amb)}
+.btn-amb:hover{background:var(--amb-l)}
 .btn-teal:hover{background:var(--teal-l)}
 .btn-sm{padding:5px 11px;font-size:12px}
 .btn-block{display:block;width:100%;text-align:center}
@@ -606,6 +608,7 @@ body.exammode #exam-body .nxbt{display:none!important}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <h2 style="font-size:15px;font-weight:600">Câu hỏi theo đề</h2>
         <button class="btn btn-teal btn-sm" onclick="importExamCsvFromAdmin()">↑ Import CSV</button>
+        <button class="btn btn-amb btn-sm" onclick="fixOrphanExamQuestions()" title="Dùng khi đã import CSV nhưng câu hỏi không hiện ra do lệch mã đề">🔧 Sửa câu hỏi bị lệch mã đề</button>
         <button class="btn btn-pur btn-sm" onclick="addExamQFromAdmin()">+ Thêm câu vào đề đang chọn</button>
       </div>
       <div class="frow">
@@ -1779,7 +1782,10 @@ async function importCSV(){
         if(/^(topic_id|exam_id)$/i.test(bankId)&&/^type$/i.test(type))continue; // bỏ qua dòng tiêu đề
         const opts=[opt1,opt2,opt3,opt4].filter(Boolean);
         const base={id:"csv"+Date.now()+Math.random().toString(36).slice(2),type:type.trim(),prompt:prompt.trim(),answer:answer.trim(),opts,extra:(extra||"").trim()};
-        newQs.push(bank==="exam"?{...base,examId:bankId.trim()}:{...base,topicId:bankId.trim()});
+        // Với đề thi thử: LUÔN gán vào đề đang chọn trên dropdown (bỏ qua cột exam_id trong CSV)
+        // để tránh lệch mã đề khi file CSV có sẵn exam_id khác với đề thật vừa tạo.
+        const realExamId=document.getElementById("csv-exam-id")?document.getElementById("csv-exam-id").value:"";
+        newQs.push(bank==="exam"?{...base,examId:realExamId||bankId.trim()}:{...base,topicId:bankId.trim()});
       }
       if(!newQs.length){document.getElementById("csv-err").textContent="Không đọc được câu hỏi nào hợp lệ từ file này. Kiểm tra lại định dạng cột.";document.getElementById("csv-err").classList.add("on");return;}
 
@@ -3441,6 +3447,31 @@ function importExamCsvFromAdmin(){
   const examId=document.getElementById("eq-filter-exam").value;
   if(!examId){alert("Hãy chọn một đề thi thử trước!");return;}
   openCsvModal("exam",examId);
+}
+// Sửa các câu hỏi "mồ côi": examId của chúng không khớp với bất kỳ đề thi thử nào đang có
+// (thường do import CSV trước khi code tự gán đúng mã đề đang chọn — xem fix trong importCSV()).
+// Gán lại toàn bộ các câu mồ côi đó vào đề đang được chọn trên dropdown.
+async function fixOrphanExamQuestions(){
+  const targetExamId=document.getElementById("eq-filter-exam").value;
+  if(!targetExamId){alert("Hãy chọn đề thi thử muốn gán câu hỏi vào trước (ở ô dropdown phía trên)!");return;}
+  const validExamIds=new Set(getExams().map(e=>e.id));
+  const orphans=getExamQs().filter(q=>!validExamIds.has(q.examId));
+  if(!orphans.length){alert("Không tìm thấy câu hỏi nào bị lệch mã đề. Mọi câu hỏi đều đã thuộc đúng 1 đề đang tồn tại.");return;}
+  const targetExam=getExams().find(e=>e.id===targetExamId);
+  if(!confirm(`Tìm thấy ${orphans.length} câu hỏi bị lệch mã đề (không thuộc đề nào đang hiển thị).\n\nGán toàn bộ ${orphans.length} câu này vào đề đang chọn: "${targetExam?targetExam.title:targetExamId}"?`))return;
+  let done=0,failed=0;
+  for(const q of orphans){
+    try{
+      if(!q.firestoreId)throw new Error("thiếu firestoreId");
+      await window.fb.updateDoc(window.fb.doc(window.db,"examQuestions",q.firestoreId),{examId:targetExamId});
+      done++;
+    }catch(err){
+      failed++;
+      console.error("fixOrphanExamQuestions: lỗi 1 câu:",err,q);
+    }
+  }
+  alert(`Đã gán lại ${done}/${orphans.length} câu vào đề "${targetExam?targetExam.title:targetExamId}".`+(failed?`\n⚠️ ${failed} câu bị lỗi, xem Console (F12) để biết chi tiết.`:""));
+  renderExamQTable();populateExamFilterSelect();
 }
 function renderExamQTable(){
   const filterExam=document.getElementById("eq-filter-exam")?document.getElementById("eq-filter-exam").value:"";
