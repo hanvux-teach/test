@@ -608,12 +608,16 @@ body.exammode #exam-body .nxbt{display:none!important}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <h2 style="font-size:15px;font-weight:600">Câu hỏi theo đề</h2>
         <button class="btn btn-teal btn-sm" onclick="importExamCsvFromAdmin()">↑ Import CSV</button>
-        <button class="btn btn-amb btn-sm" onclick="fixOrphanExamQuestions()" title="Dùng khi đã import CSV nhưng câu hỏi không hiện ra do lệch mã đề">🔧 Sửa câu hỏi bị lệch mã đề</button>
         <button class="btn btn-pur btn-sm" onclick="addExamQFromAdmin()">+ Thêm câu vào đề đang chọn</button>
       </div>
       <div class="frow">
         <select class="inp" id="eq-filter-exam" onchange="renderExamQTable()"><option value="">-- Chọn đề để xem câu hỏi --</option></select>
         <input class="inp" id="eq-search" placeholder="Tìm câu hỏi..." oninput="renderExamQTable()" style="max-width:200px">
+      </div>
+      <div class="btn-row" style="margin-bottom:12px">
+        <button class="btn btn-amb btn-sm" onclick="fixOrphanExamQuestions()" title="Dùng khi đã import CSV nhưng câu hỏi không hiện ra do lệch mã đề">🔧 Sửa câu bị lệch mã đề</button>
+        <button class="btn btn-amb btn-sm" onclick="dedupeExamQuestions()" title="Xóa các câu hỏi bị trùng (giống hệt nhau) trong đề đang chọn">🧹 Xóa câu trùng lặp</button>
+        <button class="btn btn-red btn-sm" onclick="deleteAllExamQuestionsOfSelected()" title="Xóa toàn bộ câu hỏi của đề đang chọn để nhập lại từ đầu">🗑 Xóa hết câu của đề này</button>
       </div>
       <div id="eq-table-wrap" style="overflow-x:auto"></div>
     </div>
@@ -3471,6 +3475,66 @@ async function fixOrphanExamQuestions(){
     }
   }
   alert(`Đã gán lại ${done}/${orphans.length} câu vào đề "${targetExam?targetExam.title:targetExamId}".`+(failed?`\n⚠️ ${failed} câu bị lỗi, xem Console (F12) để biết chi tiết.`:""));
+  renderExamQTable();populateExamFilterSelect();
+}
+// Xóa các câu hỏi bị trùng (giống hệt nhau) trong đề đang chọn.
+// "Trùng" = cùng type + cùng prompt + cùng answer (so khớp sau khi chuẩn hóa khoảng trắng/hoa-thường).
+// Trong các câu trùng nhau, giữ lại 1 câu (câu được tạo/import sớm nhất), xóa các câu còn lại.
+function normalizeForDedupe(s){
+  return String(s||"").replace(/\s+/g," ").trim().toLowerCase();
+}
+async function dedupeExamQuestions(){
+  const examId=document.getElementById("eq-filter-exam").value;
+  if(!examId){alert("Hãy chọn một đề thi thử trước!");return;}
+  const qs=getExamQs().filter(q=>q.examId===examId);
+  if(!qs.length){alert("Đề này chưa có câu hỏi nào.");return;}
+  const seen=new Map(); // key -> giữ lại câu đầu tiên gặp
+  const dups=[];
+  for(const q of qs){
+    const key=q.type+"||"+normalizeForDedupe(q.prompt)+"||"+normalizeForDedupe(q.answer);
+    if(seen.has(key)){
+      dups.push(q);
+    }else{
+      seen.set(key,q);
+    }
+  }
+  if(!dups.length){alert("Không tìm thấy câu hỏi trùng lặp trong đề này.");return;}
+  if(!confirm(`Tìm thấy ${dups.length} câu hỏi bị trùng (trong tổng số ${qs.length} câu) — trùng về dạng bài + nội dung câu hỏi + đáp án.\n\nXóa ${dups.length} câu trùng này (giữ lại 1 bản của mỗi câu)?\n\nHành động này không thể hoàn tác.`))return;
+  let done=0,failed=0;
+  for(const q of dups){
+    try{
+      if(!q.firestoreId)throw new Error("thiếu firestoreId");
+      await window.fb.deleteDoc(window.fb.doc(window.db,"examQuestions",q.firestoreId));
+      done++;
+    }catch(err){
+      failed++;
+      console.error("dedupeExamQuestions: lỗi 1 câu:",err,q);
+    }
+  }
+  alert(`Đã xóa ${done}/${dups.length} câu trùng lặp.`+(failed?`\n⚠️ ${failed} câu bị lỗi, xem Console (F12) để biết chi tiết.`:""));
+  renderExamQTable();populateExamFilterSelect();
+}
+// Xóa toàn bộ câu hỏi của đề đang chọn (để nhập lại từ đầu cho sạch).
+async function deleteAllExamQuestionsOfSelected(){
+  const examId=document.getElementById("eq-filter-exam").value;
+  if(!examId){alert("Hãy chọn một đề thi thử trước!");return;}
+  const qs=getExamQs().filter(q=>q.examId===examId);
+  const targetExam=getExams().find(e=>e.id===examId);
+  if(!qs.length){alert("Đề này chưa có câu hỏi nào để xóa.");return;}
+  if(!confirm(`⚠️ XÓA TOÀN BỘ ${qs.length} câu hỏi của đề "${targetExam?targetExam.title:examId}"?\n\nHành động này KHÔNG THỂ hoàn tác. Chỉ dùng khi muốn nhập lại CSV từ đầu cho sạch.`))return;
+  if(!confirm(`Xác nhận lần 2: thực sự xóa ${qs.length} câu hỏi này chứ?`))return;
+  let done=0,failed=0;
+  for(const q of qs){
+    try{
+      if(!q.firestoreId)throw new Error("thiếu firestoreId");
+      await window.fb.deleteDoc(window.fb.doc(window.db,"examQuestions",q.firestoreId));
+      done++;
+    }catch(err){
+      failed++;
+      console.error("deleteAllExamQuestionsOfSelected: lỗi 1 câu:",err,q);
+    }
+  }
+  alert(`Đã xóa ${done}/${qs.length} câu hỏi của đề "${targetExam?targetExam.title:examId}".`+(failed?`\n⚠️ ${failed} câu bị lỗi, xem Console (F12) để biết chi tiết.`:""));
   renderExamQTable();populateExamFilterSelect();
 }
 function renderExamQTable(){
