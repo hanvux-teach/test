@@ -448,14 +448,19 @@ textarea.inp{resize:vertical;min-height:70px}
   db.collection("tests").onSnapshot(snap => {
     window.CLOUD_TESTS = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     if (typeof onTestsChanged === "function") onTestsChanged();
-  }, err => console.error("tests onSnapshot error:", err));
+  }, err => { console.error("tests onSnapshot error:", err); window.fbRulesAlert && window.fbRulesAlert(err, "tests"); });
 
   window.CLOUD_TESTQS = [];
   db.collection("testQuestions").onSnapshot(snap => {
     window.CLOUD_TESTQS = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     if (typeof onTestQsChanged === "function") onTestQsChanged();
-  }, err => console.error("testQuestions onSnapshot error:", err));
+  }, err => { console.error("testQuestions onSnapshot error:", err); window.fbRulesAlert && window.fbRulesAlert(err, "testQuestions"); });
 
+  window._rulesShown = {};
+  window.fbRulesAlert = function(err, col){
+    if (window._rulesShown[col]) return; window._rulesShown[col] = 1;
+    alert("Firestore từ chối quyền truy cập collection \"" + col + "\" (" + (err && err.code || err) + ").\n\nVào Firebase Console → Firestore Database → Rules và cho phép các collection: tests, testQuestions, testAttempts (xem hướng dẫn Claude gửi).");
+  };
   window.db = db;
   // Wrapper giữ nguyên chữ ký hàm kiểu modular SDK (v9+) mà phần code phía dưới
   // đang gọi (window.fb.addDoc, updateDoc, deleteDoc, doc, onSnapshot, getDocs...)
@@ -1651,6 +1656,10 @@ function openQModal(id,testId){
   openMod("modal-q");
 }
 async function saveQ(){
+  try{ await saveQInner(); }
+  catch(e){ console.error(e); alert("Không lưu được câu hỏi: "+(e.code||"")+" "+(e.message||e)+(String(e.code||e).includes("permission")?"\n\n→ Cần cập nhật Firestore Rules cho collection tests / testQuestions / testAttempts.":"")); }
+}
+async function saveQInner(){
   const id=document.getElementById("mq-id").value;
   const topicId=Q_CTX?"":document.getElementById("mq-topic").value;
   const type=document.getElementById("mq-type").value;
@@ -3783,6 +3792,12 @@ function tShowResult(){
 const TM={id:null,tab:"questions",view:"live",unsub:null,att:[],tick:null,attId:null};
 function tmTest(){return getTests().find(t=>t.id===TM.id);}
 
+function fbErr(e,col){
+  console.error(e);
+  const denied=e&&(e.code==="permission-denied"||/permission/i.test(e.message||""));
+  alert("Không lưu được ("+(e&&e.code||"lỗi")+"): "+(e&&e.message||e)+(denied?"\n\n→ Firestore Rules chưa cho phép ghi vào collection \""+col+"\". Hãy thêm rule cho tests, testQuestions, testAttempts (xem hướng dẫn)."
+   :""));
+}
 function renderTestList(){
   const el=$id("tm-list");if(!el)return;
   const tests=getTests().slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -3804,16 +3819,22 @@ function openTestModal(id){
   openMod("modal-test");
 }
 async function saveTest(){
+  try{ await saveTestInner(); }
+  catch(e){ console.error(e); alert("Không lưu được test: "+(e.code||"")+" "+(e.message||e)+(String(e.code||e).includes("permission")?"\n\n→ Cần cập nhật Firestore Rules cho collection tests / testQuestions / testAttempts.":"")); }
+}
+async function saveTestInner(){
   const id=$id("mtt-id").value;const title=$id("mtt-title").value.trim();
   if(!title){$id("mtt-err").classList.add("on");return;}
   const data={title,lesson:$id("mtt-lesson").value.trim(),durationMin:Math.max(1,parseInt($id("mtt-min").value)||30),
     showAnswers:$id("mtt-show").value,published:$id("mtt-pub").checked};
-  if(id){
-    const t=getTests().find(x=>x.id===id);
-    await window.fb.updateDoc(window.fb.doc(window.db,"tests",t.firestoreId),data);
-  }else{
-    const ref=await window.fb.addDoc(window.fb.collection(window.db,"tests"),{id:"t"+Date.now(),...data,createdAt:Date.now(),live:null});
-  }
+  try{
+    if(id){
+      const t=getTests().find(x=>x.id===id);
+      await window.fb.updateDoc(window.fb.doc(window.db,"tests",t.firestoreId),data);
+    }else{
+      await window.fb.addDoc(window.fb.collection(window.db,"tests"),{id:"t"+Date.now(),...data,createdAt:Date.now(),live:null});
+    }
+  }catch(e){fbErr(e,"tests");return;}
   closeMod("modal-test");
   setTimeout(()=>{renderTestList();if(TM.id)renderTmAll();},150);
 }
@@ -3921,7 +3942,7 @@ async function startLive(){
   const ref=window.fb.doc(window.db,"tests",t.firestoreId);
   CLOCK.off=await measureOffset(ref);
   const now=Date.now()+CLOCK.off;
-  await ref.update({published:true,live:{id:"L"+now,start:now,end:now+min*60000,active:true,minutes:min}});
+  try{await ref.update({published:true,live:{id:"L"+now,start:now,end:now+min*60000,active:true,minutes:min}});}catch(e){fbErr(e,"tests");return;}
   toast("Đã bắt đầu — đồng hồ đang chạy");
 }
 async function extendLive(min){
