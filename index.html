@@ -1665,42 +1665,53 @@ async function saveQ(){
   if(!prompt||!answer){document.getElementById("mq-err").classList.add("on");return;}
   const opts=optsRaw?(fo&&fo.type==="hidden"?optsRaw.split(","):optsRaw.split("\n")).map(x=>x.trim()).filter(Boolean):[];
   const fao=document.getElementById("qf-anyorder");const anyOrder=fao?fao.checked:false;
+  if(bank==="exam"&&!examId){document.getElementById("mq-err").textContent="Hãy chọn một đề thi thử!";document.getElementById("mq-err").classList.add("on");return;}
   const collName=bank==="exam"?"examQuestions":"questions";
   const bankField=bank==="exam"?{examId}:{topicId};
-  if(id){
-  
-    const existing =
-      (bank==="exam"?getExamQs():getQs()).find(q => q.id === id);
-  
-    await window.fb.updateDoc(
-      window.fb.doc(
-        window.db,
-        collName,
-        existing.firestoreId
-      ),
-      {
-        ...bankField,type,prompt,answer,opts,extra,audioUrl,anyOrder,
-        ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
-      }
-    );
-  
-  }else{
-  
-    await window.fb.addDoc(
-      window.fb.collection(
-        window.db,
-        collName
-      ),
-      {
-        id:(bank==="exam"?"eq":"q")+Date.now(),
-        ...bankField,type,prompt,answer,opts,extra,audioUrl,anyOrder,
-        ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
-      }
-    );
-  
+  const saveBtn=document.querySelector('#modal-q .btn-pur');
+  try{
+    if(saveBtn){saveBtn.disabled=true;saveBtn.textContent="Đang lưu...";}
+    if(id){
+
+      const existing =
+        (bank==="exam"?getExamQs():getQs()).find(q => q.id === id);
+      if(!existing||!existing.firestoreId)throw new Error("Không tìm thấy câu hỏi để sửa (firestoreId thiếu). Hãy tải lại trang.");
+
+      await window.fb.updateDoc(
+        window.fb.doc(
+          window.db,
+          collName,
+          existing.firestoreId
+        ),
+        {
+          ...bankField,type,prompt,answer,opts,extra,audioUrl,anyOrder,
+          ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
+        }
+      );
+
+    }else{
+
+      await window.fb.addDoc(
+        window.fb.collection(
+          window.db,
+          collName
+        ),
+        {
+          id:(bank==="exam"?"eq":"q")+Date.now(),
+          ...bankField,type,prompt,answer,opts,extra,audioUrl,anyOrder,
+          ...(subQuestions!==undefined?{subQuestions,rpTitle}:{})
+        }
+      );
+
+    }
+    closeMod("modal-q");
+    if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
+  }catch(err){
+    console.error("saveQ error:",err);
+    alert("❌ Không lưu được câu hỏi!\n\nLỗi: "+(err&&err.message?err.message:err)+"\n\nNếu lỗi có chữ 'permission': vào Firebase Console → Firestore Database → Rules, thêm quyền đọc/ghi cho collection '"+collName+"'.");
+  }finally{
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent="Lưu câu hỏi";}
   }
-  closeMod("modal-q");
-  if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
 }
 
 // ── CSV Import ──
@@ -1772,7 +1783,12 @@ async function importCSV(){
         closeMod("modal-csv");
         if(bank==="exam"){renderExamQTable();populateExamFilterSelect();}else{renderQTable();}
       },1000);
-    }catch(err){console.error(err);document.getElementById("csv-err").classList.add("on");}
+    }catch(err){
+      console.error("importCSV error:",err);
+      const errEl=document.getElementById("csv-err");
+      errEl.textContent="❌ Lỗi: "+(err&&err.message?err.message:err)+(/permission/i.test(err&&err.message||"")?" — Vào Firebase Console → Firestore Database → Rules, thêm quyền đọc/ghi cho collection '"+(bank==="exam"?"examQuestions":"questions")+"'.":"");
+      errEl.classList.add("on");
+    }
   };
   reader.readAsText(file,"UTF-8");
 }
@@ -3296,27 +3312,56 @@ function openExamModal(id){
   openMod("modal-exam");
 }
 async function saveExam(){
+  console.log("saveExam() called");
   const id=document.getElementById("me-id").value;
   const levelId=document.getElementById("me-level").value;
   const title=document.getElementById("me-title").value.trim();
   const durationMin=parseInt(document.getElementById("me-duration").value)||30;
   const order=parseInt(document.getElementById("me-order").value)||1;
-  if(!title){document.getElementById("me-err").classList.add("on");return;}
-  const data={levelId,title,durationMin,order};
-  if(id){
-    const existing=getExams().find(x=>x.id===id);
-    await window.fb.updateDoc(window.fb.doc(window.db,"exams",existing.firestoreId),data);
-  }else{
-    await window.fb.addDoc(window.fb.collection(window.db,"exams"),{id:"ex"+Date.now(),...data});
+  if(!title){
+    document.getElementById("me-err").textContent="Vui lòng nhập Tên đề (gõ chữ vào ô, không tính chữ mờ placeholder)!";
+    document.getElementById("me-err").classList.add("on");
+    alert("⚠️ Bạn chưa nhập Tên đề!\n\nHãy bấm vào ô 'Tên đề' và gõ tên (ví dụ: Đề số 1 — CA1), rồi bấm Lưu lại.");
+    return;
   }
-  closeMod("modal-exam");
-  renderAdminExams();populateExamFilterSelect();
+  if(!levelId){
+    alert("⚠️ Bạn chưa chọn Cấp thi đấu!");
+    return;
+  }
+  if(!window.db||!window.fb){
+    alert("❌ Chưa kết nối được tới Firebase (window.db/window.fb chưa sẵn sàng).\n\nHãy tải lại trang (F5) và đợi vài giây cho kết nối Firebase, rồi thử lại. Nếu vẫn lỗi, mở Console (F12) và gửi lại dòng lỗi màu đỏ cho người hỗ trợ.");
+    return;
+  }
+  const data={levelId,title,durationMin,order};
+  const btn=document.querySelector('#modal-exam .btn-pur');
+  try{
+    if(btn){btn.disabled=true;btn.textContent="Đang lưu...";}
+    if(id){
+      const existing=getExams().find(x=>x.id===id);
+      if(!existing||!existing.firestoreId)throw new Error("Không tìm thấy đề thi để sửa (firestoreId thiếu). Hãy thử tải lại trang.");
+      await window.fb.updateDoc(window.fb.doc(window.db,"exams",existing.firestoreId),data);
+    }else{
+      await window.fb.addDoc(window.fb.collection(window.db,"exams"),{id:"ex"+Date.now(),...data});
+    }
+    closeMod("modal-exam");
+    renderAdminExams();populateExamFilterSelect();
+  }catch(err){
+    console.error("saveExam error:",err);
+    alert("❌ Không lưu được đề thi!\n\nLỗi: "+(err&&err.message?err.message:err)+"\n\nNếu lỗi có chữ 'permission' hoặc 'insufficient permissions': vào Firebase Console → Firestore Database → Rules, và thêm quyền đọc/ghi cho 3 collection mới: exams, examQuestions, examScores (giống rule đang áp dụng cho collection 'questions').");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Lưu đề thi";}
+  }
 }
 async function deleteExam(id){
   if(!confirm("Xóa đề thi thử này? Các câu hỏi thuộc đề cũng nên được xóa riêng."))return;
-  const e=getExams().find(x=>x.id===id);
-  if(e?.firestoreId)await window.fb.deleteDoc(window.fb.doc(window.db,"exams",e.firestoreId));
-  renderAdminExams();populateExamFilterSelect();
+  try{
+    const e=getExams().find(x=>x.id===id);
+    if(e?.firestoreId)await window.fb.deleteDoc(window.fb.doc(window.db,"exams",e.firestoreId));
+    renderAdminExams();populateExamFilterSelect();
+  }catch(err){
+    console.error("deleteExam error:",err);
+    alert("❌ Không xóa được đề thi!\n\nLỗi: "+(err&&err.message?err.message:err));
+  }
 }
 
 // ── Admin: quản lý câu hỏi theo đề (dùng chung modal-q với bank="exam") ──
@@ -3374,9 +3419,14 @@ function renderExamQTable(){
 }
 async function deleteExamQ(id){
   if(!confirm("Xóa câu hỏi này?"))return;
-  const q=getExamQs().find(x=>x.id===id);
-  if(q?.firestoreId)await window.fb.deleteDoc(window.fb.doc(window.db,"examQuestions",q.firestoreId));
-  renderExamQTable();
+  try{
+    const q=getExamQs().find(x=>x.id===id);
+    if(q?.firestoreId)await window.fb.deleteDoc(window.fb.doc(window.db,"examQuestions",q.firestoreId));
+    renderExamQTable();
+  }catch(err){
+    console.error("deleteExamQ error:",err);
+    alert("❌ Không xóa được câu hỏi!\n\nLỗi: "+(err&&err.message?err.message:err));
+  }
 }
 
 // ── Admin: nhập đề mẫu IOE K4 (trích từ đề gốc CA1 bạn cung cấp) ──
@@ -3384,6 +3434,7 @@ async function seedIOEK4Exam(){
   if(!confirm("Nhập đề mẫu 'Đề số 1 — CA1 (IOE K4 gốc)' vào Cấp trường?\n\n133/200 câu (mcq, fill, sắp xếp câu, sửa lỗi sai, đúng/sai) đã được trích và gán đáp án từ đề gốc.\n~67 câu còn lại (dạng nghe/nhìn tranh) đề gốc không có audio/ảnh nên CHƯA nhập — cần bổ sung thủ công sau.\n\nChỉ nên bấm nút này 1 lần."))return;
   const already=getExams().find(e=>e.seedKey==="ioe_k4_ca1_de1");
   if(already){alert("Đề mẫu này đã được nhập trước đó rồi! Vào mục 'Câu hỏi theo đề' để xem/bổ sung.");return;}
+  try{
   const examData={id:"ex_ioe_k4_ca1_de1",levelId:"truong",title:"Đề số 1 — CA1 (trích đề IOE K4 gốc, 133/200 câu)",durationMin:30,order:1,seedKey:"ioe_k4_ca1_de1"};
   await window.fb.addDoc(window.fb.collection(window.db,"exams"),examData);
   const seedQs=[{"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "What do you do on Saturday?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "This is an apple.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "It's blue and white.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "I'm flying a kite.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "When's your birthday?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "They are singing songs.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "What can you see?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Can you ride a bike?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "This is a train.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "There are twenty classrooms.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Is this your brother?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "He's in the classroom.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Where are you from?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "There is a garden near my house.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "There are eighteen classrooms in my school.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "I like listening to music.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "It is seven o'clock.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "It's Monday today.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "We play football after school.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "What time is it now? It's eight.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Tim goes to school at eight.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "I have English and maths on Tuesday.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Can Tom play tennis? Yes, he can.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "What is your bag colour?", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "We study maths at school.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "They study art and PE today.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "Where's the market? It's in town.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "The monkey is climbing a tree.", "opts": [], "extra": ""}, {"type": "arrange", "prompt": "Sắp xếp thành câu đúng", "answer": "What day is it today? It's a nice Wednesday morning.", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Jenny is __ best friend. She is your friend too.", "answer": "my", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My brothers go to bed __ ten o'clock.", "answer": "at", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I'm from A__rica.", "answer": "f", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Ms Hoa h__ breakfast at 6.30.", "answer": "as", "opts": [], "extra": ""}, {"type": "fill", "prompt": "There is __ apple on the table.", "answer": "an", "opts": [], "extra": ""}, {"type": "fill", "prompt": "C__ you skate? – No, I can't.", "answer": "an", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My family often watch TV in t__ evening.", "answer": "he", "opts": [], "extra": ""}, {"type": "fill", "prompt": "She do__ her homework after school.", "answer": "es", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I help my mom do housework __ Sundays.", "answer": "on", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My best friend is from Bri___n.", "answer": "tai", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My bir__day is in March.", "answer": "th", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I go __ school at 7.15.", "answer": "to", "opts": [], "extra": ""}, {"type": "fill", "prompt": "We have a com__er room at school.", "answer": "put", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My favourite subject is ma__.", "answer": "ths", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My birthday is __ April.", "answer": "in", "opts": [], "extra": ""}, {"type": "fill", "prompt": "We go to school at se__n o'clock.", "answer": "ve", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Birds have w__gs and feathers to fly.", "answer": "in", "opts": [], "extra": ""}, {"type": "fill", "prompt": "There is a gar___ behind the school.", "answer": "den", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I h__ PE on Fridays.", "answer": "ave", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Today is Wed__day.", "answer": "nes", "opts": [], "extra": ""}, {"type": "fill", "prompt": "We use a cl__k to tell the time.", "answer": "oc", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I'm fr__ Japan.", "answer": "om", "opts": [], "extra": ""}, {"type": "fill", "prompt": "We should he_p our friends when they need it.", "answer": "l", "opts": [], "extra": ""}, {"type": "fill", "prompt": "A guitar has s__ strings.", "answer": "ix", "opts": [], "extra": ""}, {"type": "fill", "prompt": "This is Linda. She __ from Singapore.", "answer": "is", "opts": [], "extra": ""}, {"type": "fill", "prompt": "A __sh can breathe underwater.", "answer": "fi", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My teacher gives me PE ___sons on Fridays.", "answer": "les", "opts": [], "extra": ""}, {"type": "fill", "prompt": "We don't go __ school at the weekend.", "answer": "to", "opts": [], "extra": ""}, {"type": "fill", "prompt": "W____'s your school? – It's in the city.", "answer": "here", "opts": [], "extra": ""}, {"type": "fill", "prompt": "A square has f___ equal sides.", "answer": "our", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I drink orange j___e every day.", "answer": "uic", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Linh can ride a h_____, but she can't ride a bike.", "answer": "orse", "opts": [], "extra": ""}, {"type": "fill", "prompt": "I love singing b_____e I want to be a singer.", "answer": "ecaus", "opts": [], "extra": ""}, {"type": "fill", "prompt": "My friends enjoy hiking in the m______ns.", "answer": "ountai", "opts": [], "extra": ""}, {"type": "fill", "prompt": "How m___ cakes do you want to buy? - Two.", "answer": "any", "opts": [], "extra": ""}, {"type": "fill", "prompt": "Tom has English on Mondays and T____days.", "answer": "hurs", "opts": [], "extra": ""}, {"type": "fill", "prompt": "There is a big play____und at my school.", "answer": "gro", "opts": [], "extra": ""}, {"type": "fill", "prompt": "T___e are four people in my family.", "answer": "her", "opts": [], "extra": ""}, {"type": "mcq", "prompt": "This is ____ apple.", "answer": "an", "opts": ["an", "the", "no article", "a"], "extra": ""}, {"type": "mcq", "prompt": "She can ________ very well. She makes delicious food for her family.", "answer": "cook", "opts": ["cook", "draw", "ski", "skate"], "extra": ""}, {"type": "mcq", "prompt": "Beethoven was a famous ____. He has a lot of famous music.", "answer": "musician", "opts": ["painter", "teacher", "musician", "writer"], "extra": ""}, {"type": "mcq", "prompt": "___ are five people in my family.", "answer": "There", "opts": ["There", "That", "These", "This"], "extra": ""}, {"type": "mcq", "prompt": "This is my pencil. That is ____.", "answer": "yours", "opts": ["you", "her", "your", "yours"], "extra": ""}, {"type": "mcq", "prompt": "Which underlined part sounds like 'w' in WHO?", "answer": "wind", "opts": ["water", "write", "wind", "week"], "extra": "Đáp án cần giáo viên nghe lại audio gốc để xác nhận"}, {"type": "mcq", "prompt": "The children are playing football in the ______.", "answer": "playground", "opts": ["restaurant", "playground", "computer room", "swimming pool"], "extra": ""}, {"type": "mcq", "prompt": "Can Julia play the piano?", "answer": "Yes, she can.", "opts": ["Yes, she can.", "No, she can.", "Yes, she does.", "Yes, she likes."], "extra": ""}, {"type": "mcq", "prompt": "How many syllables does the word \"tomorrow\" have?", "answer": "three", "opts": ["one", "two", "three", "four"], "extra": ""}, {"type": "mcq", "prompt": "_____ class are you in? - I'm in class 4A.", "answer": "What", "opts": ["How", "What", "Where", "When"], "extra": ""}, {"type": "mcq", "prompt": "Mary loves _____ pictures about animals.", "answer": "drawing", "opts": ["drawing", "dancing", "cooking", "playing"], "extra": ""}, {"type": "mcq", "prompt": "Choose the correct sentence.", "answer": "I have English on Monday.", "opts": ["I having English on Monday.", "I has English on Monday.", "I have English in Monday.", "I have English on Monday."], "extra": ""}, {"type": "mcq", "prompt": "____ do you want to drink? - I want some water.", "answer": "What", "opts": ["When", "What", "Where", "Why"], "extra": ""}, {"type": "mcq", "prompt": "Choose the correct question for the underlined part: The cat is under the chair.", "answer": "Where is the cat?", "opts": ["What is the cat doing?", "Where is the cat?", "When is the cat under the chair?", "Who is under the chair?"], "extra": ""}, {"type": "mcq", "prompt": "I have breakfast ____ seven o'clock.", "answer": "at", "opts": ["on", "with", "in", "at"], "extra": ""}, {"type": "mcq", "prompt": "Hi! I'm Jeny. I'm ____ Viet Nam.", "answer": "from", "opts": ["from", "at", "on", "of"], "extra": ""}, {"type": "mcq", "prompt": "My brother can ________. He makes nice pictures with pencils.", "answer": "draw", "opts": ["draw", "skate", "ski", "write"], "extra": ""}, {"type": "mcq", "prompt": "Which word has a different number of syllables?", "answer": "school", "opts": ["water", "morning", "school", "robot"], "extra": ""}, {"type": "mcq", "prompt": "The _______ is a place where we can read and borrow books.", "answer": "library", "opts": ["playground", "canteen", "library", "classroom"], "extra": ""}, {"type": "mcq", "prompt": "A: What's your name? – B: ____ name's Minh.", "answer": "My", "opts": ["He", "Mine", "My", "Your"], "extra": ""}, {"type": "mcq", "prompt": "We use our eyes to ____.", "answer": "see", "opts": ["hear", "see", "eat", "walk"], "extra": ""}, {"type": "mcq", "prompt": "There is _____ music room at our school.", "answer": "a", "opts": ["the", "no article", "an", "a"], "extra": ""}, {"type": "mcq", "prompt": "The children can _______ in the pool after school.", "answer": "swim", "opts": ["cook", "sleep", "write", "swim"], "extra": ""}, {"type": "mcq", "prompt": "Make a correct sentence: I / like / read / book /.", "answer": "I like reading a book.", "opts": ["I likes read a book.", "I like read a book.", "I like reading a book.", "I like reading book."], "extra": ""}, {"type": "mcq", "prompt": "Make a sentence: Mary / from / America.", "answer": "Mary is from America.", "opts": ["Mary is the America.", "Mary is on America.", "Mary is from America.", "Mary is America."], "extra": ""}, {"type": "mcq", "prompt": "Choose the CORRECT sentence.", "answer": "This is my bag.", "opts": ["This my bag.", "They are my bag.", "This are my bag.", "This is my bag."], "extra": ""}, {"type": "mcq", "prompt": "I can ____ a bird in the tree.", "answer": "see", "opts": ["to see", "seeing", "see", "sees"], "extra": ""}, {"type": "mcq", "prompt": "Bees make ____.", "answer": "honey", "opts": ["honey", "milk", "bread", "juice"], "extra": ""}, {"type": "mcq", "prompt": "Choose the correct question for the underlined part: Today is Friday. I go to school.", "answer": "What day is it today?", "opts": ["Which day is Friday?", "What day is it today?", "What date is it today?", "What do you do on Fridays?"], "extra": ""}, {"type": "mcq", "prompt": "Can you speak Vietnamese? - No, I ___.", "answer": "don't", "opts": ["can", "don't", "can't", "do"], "extra": ""}, {"type": "mcq", "prompt": "How many syllables does the word \"pencil\" have?", "answer": "two", "opts": ["two", "three", "four", "one"], "extra": ""}, {"type": "mcq", "prompt": "Which word has a different number of syllables?", "answer": "mouth", "opts": ["mouth", "tennis", "painter", "Thursday"], "extra": ""}, {"type": "mcq", "prompt": "Which animal likes to eat bananas?", "answer": "monkey", "opts": ["cat", "dog", "monkey", "fish"], "extra": ""}, {"type": "mcq", "prompt": "There ____ two computer rooms at my school.", "answer": "are", "opts": ["is", "have", "has", "are"], "extra": ""}, {"type": "mcq", "prompt": "Which one is a fruit?", "answer": "a mango", "opts": ["a mango", "a clock", "a mop", "a table"], "extra": ""}, {"type": "mcq", "prompt": "William can ____ very well.", "answer": "swim", "opts": ["swims", "swim", "is swimming", "swimming"], "extra": ""}, {"type": "mcq", "prompt": "Mai _____ playing the violin.", "answer": "likes", "opts": ["like", "doesn't like", "don't like", "likes"], "extra": ""}, {"type": "mcq", "prompt": "Make a correct sentence: Tom / often / go / swim / on / Sundays /.", "answer": "Tom often goes swimming on Sundays.", "opts": ["Tom often goes swimming on Sundays.", "Tom often go swimming on Sundays.", "Tom often goes to swim in Sundays.", "Tom often goes to swimming on Sundays."], "extra": ""}, {"type": "mcq", "prompt": "I often go to the library _______ Saturday morning.", "answer": "at", "opts": ["from", "in", "at", "on"], "extra": ""}, {"type": "mcq", "prompt": "How many people _____ in your family?", "answer": "are there", "opts": ["there are", "in there", "is there", "are there"], "extra": ""}, {"type": "mcq", "prompt": "_____ do you like art? – Because I want to be a painter.", "answer": "Why", "opts": ["Why", "Where", "When", "What"], "extra": ""}, {"type": "mcq", "prompt": "A _______ helps sick people feel better. He/She works in a hospital.", "answer": "doctor", "opts": ["teacher", "driver", "doctor", "farmer"], "extra": ""}, {"type": "mcq", "prompt": "What day is it today?", "answer": "It is Wednesday.", "opts": ["It is in Thursday.", "It is Wednesday.", "I have maths on Friday.", "It's May."], "extra": ""}, {"type": "mcq", "prompt": "We often study IT in the _______.", "answer": "computer room", "opts": ["computer room", "swimming pool", "art room", "playground"], "extra": ""}, {"type": "mcq", "prompt": "What's he doing? – He ____ a quiz with his friends.", "answer": "is doing", "opts": ["is doing", "do", "does", "doing"], "extra": ""}, {"type": "mcq", "prompt": "Choose the correct sentence.", "answer": "It's nine fifteen.", "opts": ["It's nine fifteen o'clock.", "It's nine fifteen.", "It's fifteen nine.", "It fifteen o'clock nine."], "extra": ""}, {"type": "mcq", "prompt": "What is fifteen plus ten?", "answer": "twenty-five", "opts": ["twenty-three", "twenty-four", "twenty-six", "twenty-five"], "extra": ""}, {"type": "mcq", "prompt": "We _______ at ten o'clock in the evening because we are sleepy.", "answer": "go to bed", "opts": ["have breakfast", "get up", "go to school", "go to bed"], "extra": ""}, {"type": "mcq", "prompt": "Six plus four equals ____.", "answer": "ten", "opts": ["nine", "ten", "eleven", "eight"], "extra": ""}, {"type": "mcq", "prompt": "Choose the correct question for the underlined part: My best friend is coming to my party tonight.", "answer": "Who is coming to my party?", "opts": ["Where is your best friend coming?", "When is your best friend coming?", "Who is coming to my party?", "What is your best friend doing tonight?"], "extra": ""}, {"type": "mcq", "prompt": "I want ____ milk for my breakfast.", "answer": "some", "opts": ["a", "some", "an", "many"], "extra": ""}, {"type": "mcq", "prompt": "What are the animals that live in the water?", "answer": "frogs, dolphins, and crabs", "opts": ["frogs, turtles, and cats", "snakes, hippos, dolphins", "ducks, crocodiles, tigers", "frogs, dolphins, and crabs"], "extra": ""}, {"type": "mcq", "prompt": "My friends often ____ football, but Nam ____ basketball after school.", "answer": "play - plays", "opts": ["play - plays", "play - play", "plays - play", "play - is playing"], "extra": ""}, {"type": "mcq", "prompt": "Mai's birthday is ____ May 1st, but her party is ____ the evening.", "answer": "on - in", "opts": ["at - in", "on - in", "in - on", "on - at"], "extra": ""}, {"type": "mcq", "prompt": "Minh likes doing ______ and _______ music with his friends after school.", "answer": "word puzzles - listening to", "opts": ["word puzzles - listening to", "table tennis - singing", "swimming - playing", "homework - making to"], "extra": "Cần giáo viên đối chiếu lại với đáp án gốc"}, {"type": "mcq", "prompt": "My sister wants to go outside to play, _______ it is raining heavily, _______ she stays inside and reads a book.", "answer": "but - so", "opts": ["but - so", "so - because", "because - but", "but - because"], "extra": ""}, {"type": "mcq", "prompt": "Make a correct sentence: Do / brother / ride / horse / or / play / guitar?", "answer": "Does your brother like riding a horse or playing the guitar?", "opts": ["Does your brother like to ride horse or play the guitar?", "Does your brother like riding a horse or playing the guitar?", "Does your brother like riding a horse or playing the guitar or not?", "Does your brother likes riding a horse or playing the guitar?"], "extra": ""}, {"type": "err-correct", "prompt": "We go to school from <u>Mondays</u> <u>and</u> <u>Fridays</u>. <u>We</u> go to school from Mondays and Fridays.", "answer": "Mondays", "opts": ["Mondays", "and", "Fridays", "We"], "extra": "Sửa lại: from Monday to Friday"}, {"type": "err-correct", "prompt": "<u>My</u> brother can <u>go</u> a horse <u>but</u> he can't ride a <u>bike</u>.", "answer": "go", "opts": ["bike", "but", "My", "go"], "extra": "Sửa lại: can ride a horse"}, {"type": "err-correct", "prompt": "<u>How many</u> computer rooms <u>is</u> there <u>at</u> your school?", "answer": "is", "opts": ["at", "How many", "is", "rooms"], "extra": "Sửa lại: are there"}, {"type": "err-correct", "prompt": "<u>England</u> is my <u>favourite</u> subject <u>because</u> I want to <u>talk with</u> foreign friends.", "answer": "England", "opts": ["because", "favourite", "England", "talk with"], "extra": "Sửa lại: English"}, {"type": "err-correct", "prompt": "Minh <u>like</u> music <u>because</u> he <u>wants</u> to <u>be</u> a singer.", "answer": "like", "opts": ["wants", "like", "be", "because"], "extra": "Sửa lại: likes"}, {"type": "err-correct", "prompt": "Maths is my <u>sister's</u> <u>favourite</u> <u>subjects</u>.", "answer": "subjects", "opts": ["Maths", "subjects", "sister's", "favourite"], "extra": "Sửa lại: subject"}, {"type": "tf", "prompt": "Lan: What time do you get up, Nam?\nNam: I get up at 6.30 a.m. After that, I wash my face and have breakfast.\nLan: Do you go to school at seven?\nNam: Yes, I always go to school at seven o'clock.\n\n→ Nam has breakfast at seven o'clock.", "answer": "False", "opts": ["True", "False"], "extra": ""}, {"type": "tf", "prompt": "Hi, my name is Hoa. I am ten years old. I go to Green School. I like reading books and playing football.\n\n→ Hoa studies at Green School.", "answer": "True", "opts": ["True", "False"], "extra": ""}, {"type": "tf", "prompt": "Hi, I'm Nam. This is my school. There is a small playground in my school. After class, my friends and I play football and badminton there. Sometimes we also play hide and seek. The playground is next to the library, so we can go to read books after playing.\n\n→ Nam and his friends can play football and badminton.", "answer": "True", "opts": ["True", "False"], "extra": ""}];
@@ -3398,6 +3449,10 @@ async function seedIOEK4Exam(){
   }
   alert("Đã nhập xong "+done+" câu hỏi vào 'Đề số 1 — CA1'!\n\nLưu ý: đề gốc không kèm đáp án nên đáp án do suy luận ngữ pháp/ngữ cảnh. Hãy kiểm tra lại các câu phát âm và câu có ghi chú 'Cần giáo viên đối chiếu' trước khi cho học sinh làm.");
   renderAdminExams();populateExamFilterSelect();renderExamQTable();
+  }catch(err){
+    console.error("seedIOEK4Exam error:",err);
+    alert("❌ Nhập đề mẫu bị lỗi giữa chừng!\n\nLỗi: "+(err&&err.message?err.message:err)+"\n\nNếu lỗi có chữ 'permission': vào Firebase Console → Firestore Database → Rules, thêm quyền đọc/ghi cho 2 collection 'exams' và 'examQuestions'.\n\nCó thể đã tạo đề trống — vào tab Thi thử để xóa đề lỗi rồi thử lại.");
+  }
 }
 
 // ══════ MODAL HELPERS ══════
