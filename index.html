@@ -2235,7 +2235,7 @@ function renderVocabCard(){
           <div class="qsub">Viết từ tiếng Anh có nghĩa trên</div>
         </div>
         <input class="fill-i" id="vtype-input" placeholder="Viết từ tiếng Anh..." autocomplete="off" onkeydown="if(event.key==='Enter')checkVocabType()">
-        <button class="btn btn-pur btn-block" id="vtype-check" onclick="checkVocabType()">Kiểm tra</button>
+        <button class="btn btn-pur btn-block" id="vtype-check" onclick="checkVocabType()">Answer</button>
         <div id="vtype-fb"></div>
       </div>`;
     setTimeout(()=>{const i=document.getElementById("vtype-input");if(i)i.focus();},50);
@@ -2507,7 +2507,7 @@ function checkMCQ(btn,c,a){
   clearPicked();svSet({v:c});
   document.querySelectorAll(".obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
-  if(!ok)document.querySelectorAll(".obt").forEach(b=>{if(b.textContent.trim()===a)b.classList.add("ok");});
+  
   showFB(ok,a);
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
 }
@@ -2533,7 +2533,7 @@ function renderFill(q){
   }
   return `<div class="fill-sentence">${sentenceHtml}</div>
     ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
-    <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Kiểm tra</button>
+    <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Answer</button>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2542,8 +2542,7 @@ function checkFill(){
   const q=quizQueue[quizIdx];const ok=fi.value.trim().toLowerCase()===q.answer.toLowerCase();
   svSet({v:fi.value});
   fi.disabled=true;
-  if(ok){fi.value=q.answer;fi.classList.add("ok");}
-  else{fi.classList.add("bad");setTimeout(()=>{if(!fi.disabled)return;fi.value=q.answer;fi.style.color="var(--teal)";},800);}
+  fi.classList.add(ok?"ok":"bad");
   showFB(ok,q.answer);
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
 }
@@ -2554,7 +2553,7 @@ function renderArrange(q){
     <div class="aans" id="aans"></div>
     <div style="font-size:12px;color:var(--tx2);margin:7px 0 4px">Từ gợi ý:</div>
     <div class="wbank" id="wbank"></div>
-    <button class="btn btn-pur" onclick="checkArr()">Kiểm tra</button>
+    <button class="btn btn-pur" onclick="checkArr()">Answer</button>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2599,7 +2598,7 @@ function checkPhon(btn,c,a){
   clearPicked();svSet({v:c});
   document.querySelectorAll(".phobt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
-  if(!ok)document.querySelectorAll(".phobt").forEach(b=>{if(b._phVal===a)b.classList.add("ok");});
+  
   showFB(ok,a.replace(/<u>/g,"").replace(/<\/u>/g,""));
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
 }
@@ -2750,7 +2749,7 @@ function renderListenFill(q){
   </div>
   <div class="fill-sentence">${sentenceHtml}</div>
   ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
-  <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Kiểm tra</button>
+  <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Answer</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2770,7 +2769,7 @@ function checkImgMCQ(btn,c,a,label){
   clearPicked();svSet({v:c});
   document.querySelectorAll(".img-obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
-  if(!ok)document.querySelectorAll(".img-obt").forEach(b=>{if(b.onclick&&b.getAttribute("onclick")&&b.getAttribute("onclick").includes("'"+a.replace(/'/g,"&#39;")+"'"))b.classList.add("ok");});
+  
   showFB(ok,label);
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
 }
@@ -2831,7 +2830,7 @@ function renderImgFill(q){
   return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
   <div class="fill-sentence">${sentenceHtml}</div>
   ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
-  <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Kiểm tra</button>
+  <button class="btn btn-pur" onclick="checkFill()" style="margin-bottom:10px">Answer</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2849,7 +2848,7 @@ function renderListenMulti(q){
   </div>
   <div class="multi-hint">Chọn tất cả đáp án đúng (có thể chọn nhiều)</div>
   <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
-  <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Kiểm tra</button>
+  <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Answer</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2862,7 +2861,7 @@ function renderMCQMulti(q){
   return `<div class="qbox">${promptHtml}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>
   <div class="multi-hint">Chọn tất cả đáp án đúng (có thể chọn nhiều)</div>
   <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
-  <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Kiểm tra</button>
+  <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Answer</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2887,7 +2886,7 @@ function checkMCQMulti(answerStr){
     const correct=correctSet.has(v);
     if(selected&&correct)b.classList.add("ok");
     else if(selected&&!correct){b.classList.add("bad");allCorrect=false;}
-    else if(!selected&&correct){b.classList.add("ok-dim");allCorrect=false;}
+    else if(!selected&&correct){allCorrect=false;}
   });
   showFB(allCorrect,[...correctSet].join(", "));
   const nb=document.getElementById("nb");if(nb){nb.textContent=quizIdx+1<quizQueue.length?"Câu tiếp theo →":"Xem kết quả →";nb.classList.add("on");}
@@ -2909,7 +2908,7 @@ function renderDragFill(q){
   ${q.extra?`<div class="hint-lbl">${esc(q.extra)}</div>`:""}
   <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">Kéo thả (hoặc nhấn) từ vào chỗ trống:</div>
   <div class="df-wordbox" id="df-wordbox">${wordBox.map((w,i)=>`<span class="df-chip" id="dfc-${i}" draggable="true" data-word="${esc(w)}" data-ci="${i}" ondragstart="dfDragStart(event,this)" onclick="dfClickChip(this)">${esc(w)}</span>`).join("")}</div>
-  <button class="btn btn-pur" style="width:100%;margin-bottom:10px" onclick="checkDragFill()">Kiểm tra</button>
+  <button class="btn btn-pur" style="width:100%;margin-bottom:10px" onclick="checkDragFill()">Answer</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -3054,7 +3053,7 @@ function rpRenderBody(sq){
     const opts=sq.opts&&sq.opts.length?shufC(sq.opts):shufC([...correctSet]);
     body.innerHTML=`<div class="multi-hint">Chọn tất cả đáp án đúng</div>
       <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
-      <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
+      <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Answer</button>`;
   }else if(t==="fill"){
     const ans=sq.answer||"";const maxLen=Math.max(ans.length,1);const width=`calc(${maxLen} * (1ch + 8px))`;
     const parts=(sq.prompt||"").split(/_+/);
@@ -3062,7 +3061,7 @@ function rpRenderBody(sq){
       ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">${esc(parts.slice(1).join("___"))}`
       :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
     body.innerHTML=`<div class="fill-sentence">${sentHtml}</div>
-      <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Kiểm tra</button>`;
+      <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Answer</button>`;
     setTimeout(()=>{const fi=document.getElementById("rp-fi");if(fi)fi.focus();},50);
   }else if(t==="tf"){
     body.innerHTML=`<div class="tfopts">
@@ -3076,7 +3075,7 @@ function rpRenderBody(sq){
       <div class="aans" id="rp-aans"></div>
       <div style="font-size:12px;color:var(--tx2);margin:7px 0 4px">Từ gợi ý:</div>
       <div class="wbank" id="rp-wbank"></div>
-      <button class="btn btn-pur" onclick="rpCheckArr(${escJs(sq.answer)})">Kiểm tra</button>`;
+      <button class="btn btn-pur" onclick="rpCheckArr(${escJs(sq.answer)})">Answer</button>`;
     rpRenderArr();
   }else if(t==="drag-fill"){
     rpRenderDragFill(sq,body);
@@ -3128,7 +3127,7 @@ function rpRestore(sq){
 function rpShowFB(ok,ans){
   const fb=document.getElementById("rp-fb");if(!fb)return;
   fb.className="fb on "+(ok?"ok":"bad");
-  fb.textContent=ok?"🎉 Chính xác!":"❌ Sai! Đáp án: "+ans;
+  fb.textContent=ok?"🎉 Chính xác!":"❌ Chưa đúng.";
   const nb=document.getElementById("rp-nb");if(nb)nb.classList.add("on");
   rpQuizState.res[rpQuizState.current]=!!ok;rpQuizState.correct=rpQuizState.res.filter(Boolean).length;
 }
@@ -3155,7 +3154,7 @@ function rpCheckMCQ(btn,c,a){
   clearPicked();rpQuizState.saved[rpQuizState.current]={v:c};
   document.querySelectorAll("#rp-qblock .obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
-  if(!ok)document.querySelectorAll("#rp-qblock .obt").forEach(b=>{if(b.textContent.trim()===a)b.classList.add("ok");});
+  
   rpShowFB(ok,a);
 }
 function rpCheckFill(){
@@ -3164,8 +3163,7 @@ function rpCheckFill(){
   const ok=fi.value.trim().toLowerCase()===sq.answer.toLowerCase();
   rpQuizState.saved[rpQuizState.current]={v:fi.value};
   fi.disabled=true;
-  if(ok){fi.value=sq.answer;fi.classList.add("ok");}
-  else{fi.classList.add("bad");setTimeout(()=>{fi.value=sq.answer;fi.style.color="var(--teal)";},800);}
+  fi.classList.add(ok?"ok":"bad");
   rpShowFB(ok,sq.answer);
 }
 function rpCheckTF(btn,c,a){
@@ -3188,7 +3186,7 @@ function rpCheckMulti(answerStr){
     const sel=b.classList.contains("sel"),cor=correctSet.has(v);
     if(sel&&cor)b.classList.add("ok");
     else if(sel&&!cor){b.classList.add("bad");allOk=false;}
-    else if(!sel&&cor){b.classList.add("ok-dim");allOk=false;}
+    else if(!sel&&cor){allOk=false;}
   });
   rpShowFB(allOk,[...correctSet].join(", "));
 }
@@ -3215,7 +3213,7 @@ function rpRenderDragFill(sq,body){
   rpDfState={blanks:new Array(bi).fill(null),answers,anyOrder:!!(sq.anyOrder)};
   body.innerHTML=`<div class="df-passage">${ph}</div>
     <div class="df-wordbox" id="rpdf-wb">${wordBox.map((w,i)=>`<span class="df-chip" id="rpdfc-${i}" draggable="true" data-word="${esc(w)}" data-ci="${i}" ondragstart="rpDfStart(event,this)" onclick="rpDfClickChip(this)">${esc(w)}</span>`).join("")}</div>
-    <button class="btn btn-pur" style="width:100%;margin-bottom:4px" onclick="rpCheckDf()">Kiểm tra</button>`;
+    <button class="btn btn-pur" style="width:100%;margin-bottom:4px" onclick="rpCheckDf()">Answer</button>`;
 }
 function rpDfStart(e,chip){rpDfDragging=chip;chip.classList.add("dragging");e.dataTransfer.effectAllowed="move";}
 function rpDfOver(e,b){e.preventDefault();b.classList.add("drag-over");}
@@ -3281,7 +3279,7 @@ function showFB(ok,ans){
   recordAns(ok);
   const fb=document.getElementById("fb");if(!fb)return;
   fb.className="fb on "+(ok?"ok":"bad");
-  fb.textContent=ok?"🎉 Chính xác!":"❌ Sai! Đáp án: "+ans;
+  fb.textContent=ok?"🎉 Chính xác!":"❌ Chưa đúng.";
 }
 async function showResult(){
   quizCorrect=quizAns.filter(Boolean).length;
