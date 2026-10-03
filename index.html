@@ -298,11 +298,11 @@ textarea.inp{resize:vertical;min-height:70px}
 .rate-good:hover{background:var(--teal-l)}
 .vocab-type-box{text-align:center}
 
-.qnav{margin-top:16px;padding-top:12px;border-top:1px solid var(--bord)}
+.qnav{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--bord)}
 .qstrip{display:flex;align-items:center;gap:6px}
-.qn{flex:1;min-width:0;padding:9px 0;border:1.5px solid var(--bord2);border-radius:6px;background:var(--surf2);color:var(--tx2);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
-.qn:hover{background:var(--pur-l)}
-.qn.done{background:var(--pur-l);border-color:var(--pur-m);color:var(--pur-d)}
+.qn{flex:1;min-width:0;padding:9px 0;border:1.5px solid #C9C9D6;border-radius:6px;background:#ECECF1;color:#6B6B80;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.qn:hover{filter:brightness(.95)}
+.qn.done{background:var(--teal-l);border-color:var(--teal);color:#0B6B4D}
 .qn.cur{background:#EE7B3D;border-color:#D4662A;color:#fff}
 .qn-empty{visibility:hidden}
 .qarr{flex:none;width:34px;padding:9px 0;border:1.5px solid var(--amb);border-radius:6px;background:var(--amb-l);color:var(--amb);font-size:13px;cursor:pointer}
@@ -714,8 +714,9 @@ body.exammode #exam-body .nxbt{display:none!important}
       <span style="font-size:12px;color:var(--tx3)" id="q-ctr"></span>
           </div>
     <div class="qprog"><div class="qpfill" id="qpfill" style="width:0%"></div></div>
+    <div class="qnav"><div class="qstrip" id="q-strip"></div><div style="text-align:right;margin-top:8px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
     <div id="quiz-body"></div>
-    <div class="qnav"><div class="qstrip" id="q-strip"></div><div style="text-align:center;margin-top:10px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
+    
   </div>
 </div>
 
@@ -733,8 +734,9 @@ body.exammode #exam-body .nxbt{display:none!important}
       <span style="font-size:12px;color:var(--tx3)" id="ex-ctr"></span>
           </div>
     <div class="qprog"><div class="qpfill" id="ex-pfill" style="width:0%"></div></div>
+    <div class="qnav"><div class="qstrip" id="ex-strip"></div><div style="text-align:right;margin-top:8px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
     <div id="exam-body"></div>
-    <div class="qnav"><div class="qstrip" id="ex-strip"></div><div style="text-align:center;margin-top:10px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
+    
   </div>
 </div>
 
