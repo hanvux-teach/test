@@ -298,8 +298,18 @@ textarea.inp{resize:vertical;min-height:70px}
 .rate-good:hover{background:var(--teal-l)}
 .vocab-type-box{text-align:center}
 
-.qnav{display:flex;justify-content:space-between;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bord)}
-.qnav .btn:disabled{opacity:.4;cursor:default}
+.qnav{margin-top:16px;padding-top:12px;border-top:1px solid var(--bord)}
+.qstrip{display:flex;align-items:center;gap:6px}
+.qn{flex:1;min-width:0;padding:9px 0;border:1.5px solid var(--bord2);border-radius:6px;background:var(--surf2);color:var(--tx2);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.qn:hover{background:var(--pur-l)}
+.qn.done{background:var(--pur-l);border-color:var(--pur-m);color:var(--pur-d)}
+.qn.cur{background:#EE7B3D;border-color:#D4662A;color:#fff}
+.qn-empty{visibility:hidden}
+.qarr{flex:none;width:34px;padding:9px 0;border:1.5px solid var(--amb);border-radius:6px;background:var(--amb-l);color:var(--amb);font-size:13px;cursor:pointer}
+.qarr:disabled{opacity:.35;cursor:default}
+.rp-chips{display:flex;gap:5px;flex-wrap:wrap}
+.rp-chips .qn{flex:none;width:30px;padding:4px 0;font-size:12px}
+@media(max-width:500px){.qn{font-size:12px;padding:8px 0}.qarr{width:28px}.qstrip{gap:3px}}
 .picked{background:var(--pur-l)!important;border-color:var(--pur)!important;color:var(--pur-d)!important}
 /* responsive */
 @media(max-width:500px){
@@ -705,7 +715,7 @@ body.exammode #exam-body .nxbt{display:none!important}
           </div>
     <div class="qprog"><div class="qpfill" id="qpfill" style="width:0%"></div></div>
     <div id="quiz-body"></div>
-    <div class="qnav"><button class="btn" id="q-prev" onclick="prevQ()">← Câu trước</button><button class="btn" id="q-skip" onclick="skipQ()">Câu sau →</button></div>
+    <div class="qnav"><div class="qstrip" id="q-strip"></div><div style="text-align:center;margin-top:10px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
   </div>
 </div>
 
@@ -724,7 +734,7 @@ body.exammode #exam-body .nxbt{display:none!important}
           </div>
     <div class="qprog"><div class="qpfill" id="ex-pfill" style="width:0%"></div></div>
     <div id="exam-body"></div>
-    <div class="qnav"><button class="btn" id="ex-prev" onclick="prevQ()">← Câu trước</button><button class="btn" id="ex-skip" onclick="skipQ()">Câu sau →</button></div>
+    <div class="qnav"><div class="qstrip" id="ex-strip"></div><div style="text-align:center;margin-top:10px"><button class="btn btn-sm btn-pur" onclick="submitQuiz()">Nộp bài ✓</button></div></div>
   </div>
 </div>
 
@@ -2404,43 +2414,40 @@ function nextQ(){
   {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
   quizIdx++;if(examMode){examRenderQ();}else{renderQ();}
 }
-function inRp(){
-  const q=quizQueue[quizIdx];
-  return !!(q&&q.type==="reading-passage"&&rpQuizState&&rpQuizState.subQs&&rpQuizState.subQs.length);
-}
-function prevQ(){
-  if(inRp()&&rpQuizState.current>0){
-    if(rpQuizState.current<rpQuizState.subQs.length)rpCapture();
-    rpQuizState.current=Math.min(rpQuizState.current,rpQuizState.subQs.length)-1;
-    rpRenderCurrent();return;
+let stripPage=0;
+function renderStrip(){
+  const el=document.getElementById(examMode?"ex-strip":"q-strip");if(!el)return;
+  const total=quizQueue.length,pages=Math.max(1,Math.ceil(total/10));
+  if(stripPage>=pages)stripPage=pages-1;
+  if(stripPage<0)stripPage=0;
+  const start=stripPage*10;
+  let h='<button class="qarr" onclick="stripMove(-1)" '+(stripPage<=0?"disabled":"")+'>◀</button>';
+  for(let k=0;k<10;k++){
+    const i=start+k;
+    if(i>=total){h+='<button class="qn qn-empty" tabindex="-1">0</button>';continue;}
+    const cls="qn"+(i===quizIdx?" cur":(quizAns[i]!==undefined?" done":""));
+    h+='<button class="'+cls+'" onclick="goQ('+i+')">'+(i+1)+'</button>';
   }
-  if(quizIdx<=0)return;
-  {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
+  h+='<button class="qarr" onclick="stripMove(1)" '+(stripPage>=pages-1?"disabled":"")+'>▶</button>';
+  el.innerHTML=h;
+}
+function stripMove(d){stripPage+=d;renderStrip();}
+function updateNavBtns(){stripPage=Math.floor(quizIdx/10);renderStrip();}
+function goQ(i){
+  if(i===quizIdx||i<0||i>=quizQueue.length)return;
+  const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);
   window.speechSynthesis&&window.speechSynthesis.cancel();
-  quizIdx--;
+  quizIdx=i;
   if(examMode){examRenderQ();}else{renderQ();}
 }
-function skipQ(){
-  if(inRp()&&rpQuizState.current<rpQuizState.subQs.length-1){
-    rpCapture();rpQuizState.current++;rpRenderCurrent();return;
-  }
+function submitQuiz(){
   const total=quizQueue.length;
-  {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
-  if(quizIdx+1>=total){
-    let left=0;for(let i=0;i<total;i++){if(quizAns[i]===undefined)left++;}
-    if(left>0&&!confirm("Còn "+left+" câu chưa làm. Bạn vẫn muốn nộp bài?"))return;
-  }
+  const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);
+  let left=0;for(let i=0;i<total;i++){if(quizAns[i]===undefined)left++;}
+  if(!confirm(left>0?"Còn "+left+" câu chưa làm. Bạn vẫn muốn nộp bài?":"Bạn chắc chắn muốn nộp bài?"))return;
   window.speechSynthesis&&window.speechSynthesis.cancel();
-  nextQ();
-}
-function updateNavBtns(){
-  const rp=inRp();
-  const last=quizIdx+1>=quizQueue.length&&(!rp||rpQuizState.current>=rpQuizState.subQs.length-1);
-  ["q","ex"].forEach(p=>{
-    const pv=document.getElementById(p+"-prev"),sk=document.getElementById(p+"-skip");
-    if(pv)pv.disabled=quizIdx<=0&&!(rp&&rpQuizState.current>0);
-    if(sk)sk.textContent=last?"Nộp bài ✓":"Câu sau →";
-  });
+  quizIdx=total;
+  if(examMode){examRenderQ();}else{renderQ();}
 }
 function dfIsCorrect(words,answers,anyOrder){
   const f=words.map(w=>String(w).trim().toLowerCase()),a=answers.map(x=>x.trim().toLowerCase());
@@ -3004,6 +3011,7 @@ function renderReadingPassage(q){
   const passageHtml=esc(q.prompt||"").replace(/\n/g,"<br>");
   return `<div class="rp-sticky">
     <span class="rp-prog-text" id="rp-prog">Câu <strong>1</strong> / ${subs.length}</span>
+    <div class="rp-chips" id="rp-chips"></div>
   </div>
   <div class="rp-passage">
     <div class="rp-passage-title">📖 ${esc(title)}</div>
@@ -3024,7 +3032,8 @@ function rpQuizInit(q){
 function rpRenderCurrent(){
   const {subQs,current,correct}=rpQuizState;
   const pe=document.getElementById("rp-prog");const se=document.getElementById("rp-score");
-  if(pe)pe.innerHTML=`Câu <strong>${current+1}</strong> / ${subQs.length}`;
+  if(pe)pe.innerHTML=`Câu <strong>${Math.min(current+1,subQs.length)}</strong> / ${subQs.length}`;
+  rpRenderChips();
   if(se)se.textContent="✓ "+correct;
   if(current>=subQs.length){rpShowResult();updateNavBtns();return;}
   const sq=subQs[current];
@@ -3084,6 +3093,12 @@ function rpRenderBody(sq){
   }
 }
 
+function rpRenderChips(){
+  const el=document.getElementById("rp-chips");if(!el)return;
+  const {subQs,current,res}=rpQuizState;
+  el.innerHTML=subQs.map((_,i)=>'<button class="qn'+(i===current?' cur':(res[i]!==undefined?' done':''))+'" onclick="rpGo('+i+')">'+(i+1)+'</button>').join("");
+}
+function rpGo(i){rpCapture();rpQuizState.current=i;rpRenderCurrent();}
 function rpCapture(){
   const {subQs,current}=rpQuizState;if(current>=subQs.length)return;
   const sq=subQs[current];const t=sq.type;const R=rpQuizState.res;
@@ -3273,7 +3288,7 @@ function shufC(a){const k=shufSlot+"|"+JSON.stringify(a);if(!shufCache[k])shufCa
 function svSet(o){const k=String(quizIdx);quizSaved[k]=Object.assign(quizSaved[k]||{},o);}
 function svGet(){return quizSaved[String(quizIdx)]||null;}
 function clearPicked(){document.querySelectorAll(".picked").forEach(x=>x.classList.remove("picked"));}
-function recordAns(ok){quizAns[quizIdx]=!!ok;quizCorrect=quizAns.filter(Boolean).length;}
+function recordAns(ok){quizAns[quizIdx]=!!ok;quizCorrect=quizAns.filter(Boolean).length;if(typeof renderStrip==="function")renderStrip();}
 function showMsg(t){const fb=document.getElementById("fb");if(!fb)return;fb.className="fb on bad";fb.textContent=t;}
 function showFB(ok,ans){
   recordAns(ok);
