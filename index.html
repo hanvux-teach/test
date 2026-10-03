@@ -602,6 +602,10 @@ body.exammode #exam-body .nxbt{display:none!important}
       </div>
       <div id="admin-scores-wrap"></div>
     </div>
+    <div class="card">
+      <h2 style="font-size:15px;font-weight:600;margin-bottom:14px">🏆 Điểm thi thử</h2>
+      <div id="admin-examscores-wrap" style="overflow-x:auto"></div>
+    </div>
   </div>
 
   <!-- Admin: Exams (Thi thử) -->
@@ -1090,7 +1094,7 @@ function getTopicVocabStats(user,topicId){
 let currentUser=null;
 let quizQueue=[],quizIdx=0,quizCorrect=0,quizTopicId=null,isMix=false,mixCount=20;
 let arrangeState={placed:[],bank:[]};
-let examMode=false,examIdG=null,examTitleG="",examTimerId=null,examSecondsLeft=0,examDurationSec=1800,currentExamLevel=null;
+let examMode=false,examIdG=null,examTitleG="",examTimerId=null,examSecondsLeft=0,examDurationSec=1800,currentExamLevel=null,examStartAt=0;
 let currentAudio=null;
 let vocabQueue=[],vocabIdx=0,vocabTopicId=null,vocabMode="flip",vocabResults={known:0,mid:0,unknown:0};
 
@@ -1572,6 +1576,7 @@ const Q_FORMS={
 function renderQForm(){
   const type=document.getElementById("mq-type").value;
   document.getElementById("q-form-body").innerHTML=Q_FORMS[type]||"";
+  addUnderlineToolbar();
   if(type==="reading-passage"){rpSubQs=[];rpRenderSubQs();}
 }
 
@@ -1594,7 +1599,8 @@ function rpRenderSubQs(){
     <label class="lbl">Dạng câu</label>
     <select class="inp" onchange="rpSubQChange(${i},this.value)">${RP_SUBTYPES.map(t=>`<option value="${t}"${sq.type===t?" selected":""}>${RP_SUBTYPE_LABELS[t]}</option>`).join("")}</select>
     <label class="lbl">Câu hỏi / Prompt</label>
-    <textarea class="inp" rows="2" placeholder="Câu hỏi..." oninput="rpSubQs[${i}].prompt=this.value">${esc(sq.prompt||"")}</textarea>
+    ${underlineToolbarHtml("rpsq-p-"+i)}
+    <textarea class="inp" id="rpsq-p-${i}" rows="2" placeholder="Câu hỏi..." oninput="rpSubQs[${i}].prompt=this.value">${esc(sq.prompt||"")}</textarea>
     ${rpSubQExtra(sq,i)}
   </div>`).join("");
 }
@@ -2080,7 +2086,33 @@ async function deleteStudent(name){
 function resetAllScores(){if(!confirm("Xóa toàn bộ điểm số?"))return;saveScores({});alert("Đã xóa.");}
 
 // ══════ ADMIN: SCORES ══════
+function renderAdminExamScores(){
+  const wrap=document.getElementById("admin-examscores-wrap");if(!wrap)return;
+  const stSel=document.getElementById("score-filter-student");
+  const fs=stSel?stSel.value:"";
+  let rows=(window.CLOUD_EXAMSCORES||[]).filter(r=>!fs||r.student===fs);
+  if(!rows.length){wrap.innerHTML='<div class="empty">Chưa có bài thi thử nào.</div>';return;}
+  const exams=getExams();
+  rows=[...rows].sort((a,b)=>(b.lastDate||0)-(a.lastDate||0));
+  const ft=t=>t!=null?fmtTime(t):"—";
+  wrap.innerHTML=`<table class="qtable">
+    <thead><tr><th>Học sinh</th><th>Đề</th><th style="text-align:center">Lần làm</th><th style="text-align:center">Cao nhất</th><th style="text-align:center">Lần cuối</th><th style="text-align:center">Ngày làm</th></tr></thead>
+    <tbody>${rows.map(r=>{
+      const ex=exams.find(e=>e.id===r.examId);
+      const col=r.best>=80?"var(--teal)":r.best>=50?"var(--amb)":"var(--red)";
+      return `<tr>
+        <td><strong>${esc(r.student)}</strong></td>
+        <td>${esc(ex?ex.title:r.examId)}</td>
+        <td style="text-align:center;color:var(--tx2)">${r.attempts||0}</td>
+        <td style="text-align:center;white-space:nowrap"><strong style="color:${col}">${r.best||0}%</strong> · ${ft(r.bestTime)}</td>
+        <td style="text-align:center;white-space:nowrap">${r.last!=null?r.last+"%":"—"} · ${ft(r.lastTime)}</td>
+        <td style="text-align:center;color:var(--tx3);white-space:nowrap">${r.lastDate?new Date(r.lastDate).toLocaleString("vi-VN"):"—"}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table>`;
+}
 function renderAdminScores(){
+  renderAdminExamScores();
   const scores=window.CLOUD_SCORES||[];
   const students=getStudents();
   const topics=getTopics();
@@ -2506,7 +2538,7 @@ function restoreCurrent(q){
 // Render helpers
 function renderMCQ(q){
   const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
-  const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
+  const promptHtml=escU(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox">${promptHtml}<span class="qsub">${q.extra?esc(q.extra):""}</span></div>
     <div class="opts">${opts.map(o=>`<button class="obt" data-v="${esc(o)}" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
     <div class="fb" id="fb"></div>
@@ -2528,13 +2560,13 @@ function renderFill(q){
   const parts=(q.prompt||"").split(/_+/);
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
+    sentenceHtml=escU(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
   this.scrollLeft=0;
-">` +esc(parts.slice(1).join("___"));
+">` +escU(parts.slice(1).join("___"));
   }else{
-    sentenceHtml=esc(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
+    sentenceHtml=escU(q.prompt||"")+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="
   this.value=this.value.slice(0,${maxLen});
   this.style.color=(this.value?'var(--pur)':'');
   this.scrollLeft=0;
@@ -2593,6 +2625,33 @@ function wrapUnderline(fieldId){
   el.value=before+"<u>"+sel+"</u>"+after;
   el.selectionStart=start;el.selectionEnd=end+7;
   el.focus();
+  el.dispatchEvent(new Event("input",{bubbles:true}));
+}
+function unwrapUnderline(fieldId){
+  const el=document.getElementById(fieldId);if(!el)return;
+  const start=el.selectionStart,end=el.selectionEnd,v=el.value;
+  if(start===end){
+    if(!confirm("Bỏ gạch chân toàn bộ trong ô này?"))return;
+    el.value=v.replace(/<\/?u>/g,"");
+  }else{
+    const sel=v.slice(start,end).replace(/<\/?u>/g,"");
+    let before=v.slice(0,start),after=v.slice(end);
+    if(before.endsWith("<u>")&&after.startsWith("</u>")){before=before.slice(0,-3);after=after.slice(4);}
+    el.value=before+sel+after;
+  }
+  el.focus();
+  el.dispatchEvent(new Event("input",{bubbles:true}));
+}
+function underlineToolbarHtml(id){
+  return '<div class="u-toolbar"><button type="button" class="u-btn" onclick="wrapUnderline(\''+id+'\')" title="Gạch chân">U̲</button><button type="button" class="btn btn-sm" onclick="unwrapUnderline(\''+id+'\')" title="Bỏ gạch chân">Bỏ gạch</button><span class="u-hint">Bôi đen chữ → nhấn U̲ để gạch chân</span></div>';
+}
+function addUnderlineToolbar(){
+  const p=document.getElementById("qf-prompt");
+  if(!p||p.type==="hidden")return;
+  if(document.getElementById("mq-type").value==="arrange")return;
+  const prev=p.previousElementSibling;
+  if(prev&&prev.classList.contains("u-toolbar"))return;
+  p.insertAdjacentHTML("beforebegin",underlineToolbarHtml("qf-prompt"));
 }
 function renderPhon(q){
   const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
@@ -2618,7 +2677,7 @@ function renderListen(q){
 
   return `<div class="lbox">
     <p style="font-size:13px;color:var(--tx2);margin-bottom:12px">
-      ${esc(q.prompt)}
+      ${escU(q.prompt)}
     </p>
 
     <button
@@ -2705,7 +2764,7 @@ function playQuestionAudio(audioUrl, text){
   }
 }
 function renderTF(q){
-  const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
+  const promptHtml=escU(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox" style="font-size:16px">${promptHtml}<span class="qsub">${q.extra?esc(q.extra):""}</span></div>
     <div class="tfopts">
       <button class="tfbt" data-v="True" style="color:var(--teal)" onclick="checkTF(this,'True',${escJs(q.answer)})">✓ True</button>
@@ -2724,7 +2783,7 @@ function checkTF(btn,c,a){
 // ══ Listen True/False ══
 function renderListenTF(q){
   return `<div class="lbox">
-    <p style="font-size:13px;color:var(--tx2);margin:8px 0 12px">${esc(q.prompt||"Nghe đoạn audio và chọn Đúng hoặc Sai")}</p>
+    <p style="font-size:13px;color:var(--tx2);margin:8px 0 12px">${escU(q.prompt||"Nghe đoạn audio và chọn Đúng hoặc Sai")}</p>
     <button class="lbtn" onclick="playQuestionAudio(${escJs(q.audioUrl||"")},${escJs(q.answer)})">
       <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
       Nghe
@@ -2746,7 +2805,7 @@ function renderListenFill(q){
   const parts=(q.prompt||"").split(/_+/);
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=escU(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +escU(parts.slice(1).join("___"));
   }else{
     sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
   }
@@ -2767,7 +2826,7 @@ function renderListenFill(q){
 function renderImgMCQ(q){
   const opts=q.opts&&q.opts.length?shufC(q.opts):[];
   const correctLabel=q.extra||q.answer;
-  return `<div class="qbox">${esc(q.prompt)}</div>
+  return `<div class="qbox">${escU(q.prompt)}</div>
   <div class="img-opts">${opts.map(o=>`<button class="img-obt" data-v="${esc(o)}" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
     <img src="${esc(o)}" alt="" onerror="this.style.display='none'">
   </button>`).join("")}</div>
@@ -2787,7 +2846,7 @@ function checkImgMCQ(btn,c,a,label){
 function renderReadImg(q){
   const opts=q.opts&&q.opts.length?shufC(q.opts):[];
   const correctLabel=q.extra||q.answer;
-  return `<div class="qbox">${esc(q.prompt)}</div>
+  return `<div class="qbox">${escU(q.prompt)}</div>
   <div class="img-opts">${opts.map(o=>`<button class="img-obt" data-v="${esc(o)}" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
     <img src="${esc(o)}" alt="" onerror="this.style.display='none'">
   </button>`).join("")}</div>
@@ -2817,7 +2876,7 @@ function renderPicMCQ(q){
   const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
   const imgUrl=q.audioUrl||"";
   return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
-  ${q.prompt?`<div class="qbox">${esc(q.prompt)}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>`:""}
+  ${q.prompt?`<div class="qbox">${escU(q.prompt)}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>`:""}
   <div class="opts">${opts.map(o=>`<button class="obt" data-v="${esc(o)}" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
@@ -2831,7 +2890,7 @@ function renderImgFill(q){
   const parts=(q.prompt||"").split(/_+/);
   let sentenceHtml="";
   if(parts.length>=2){
-    sentenceHtml=esc(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +esc(parts.slice(1).join("___"));
+    sentenceHtml=escU(parts[0])+`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">` +escU(parts.slice(1).join("___"));
   }else{
     sentenceHtml=`<input class="fill-blank" id="fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
   }
@@ -2849,7 +2908,7 @@ function renderListenMulti(q){
   const correctSet=new Set((q.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
   const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([...correctSet]);
   return `<div class="lbox">
-    <p style="font-size:13px;color:var(--tx2);margin:8px 0 12px">${esc(q.prompt||"Nghe và chọn tất cả đáp án đúng")}</p>
+    <p style="font-size:13px;color:var(--tx2);margin:8px 0 12px">${escU(q.prompt||"Nghe và chọn tất cả đáp án đúng")}</p>
     <button class="lbtn" onclick="playQuestionAudio(${escJs(q.audioUrl||"")},'')">
       <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
       Nghe
@@ -2866,7 +2925,7 @@ function renderListenMulti(q){
 function renderMCQMulti(q){
   const correctSet=new Set((q.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
   const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([...correctSet]);
-  const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
+  const promptHtml=escU(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox">${promptHtml}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>
   <div class="multi-hint">Chọn tất cả đáp án đúng (có thể chọn nhiều)</div>
   <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
@@ -2908,7 +2967,7 @@ function renderDragFill(q){
   const wordBox=q.opts&&q.opts.length?shufC(q.opts):shufC([...answers]);
   // Build passage HTML — replace each ___ with a drop zone, all same width
   let blankIdx=0;
-  const passageHtml=esc(q.prompt).replace(/___/g,()=>{
+  const passageHtml=escU(q.prompt).replace(/___/g,()=>{
     const i=blankIdx++;
     return `<span class="df-blank" id="dfb-${i}" data-idx="${i}" ondragover="dfDragOver(event,this)" ondragleave="dfDragLeave(this)" ondrop="dfDrop(event,this)" onclick="dfClickBlank(this)"><span class="df-blank-text" id="dfbt-${i}"></span></span>`;
   });
@@ -3010,7 +3069,7 @@ let rpDfSelectedChip=null;
 function renderReadingPassage(q){
   const subs=q.subQuestions||[];
   const title=q.rpTitle||"Bài đọc";
-  const passageHtml=esc(q.prompt||"").replace(/\n/g,"<br>");
+  const passageHtml=escU(q.prompt||"").replace(/\n/g,"<br>");
   return `<div class="rp-sticky">
     <span class="rp-prog-text" id="rp-prog">Câu <strong>1</strong> / ${subs.length}</span>
     <div class="rp-chips" id="rp-chips"></div>
@@ -3042,7 +3101,7 @@ function rpRenderCurrent(){
   const area=document.getElementById("rp-qarea");if(!area)return;
   const isLast=current===subQs.length-1;
   area.innerHTML=`<div class="rp-qblock" id="rp-qblock">
-    <div class="rp-qtitle"><span class="rp-qnum">${current+1}</span><span>${esc(sq.prompt||"")}</span></div>
+    <div class="rp-qtitle"><span class="rp-qnum">${current+1}</span><span>${escU(sq.prompt||"")}</span></div>
     <div id="rp-qbody"></div>
     <div class="fb" id="rp-fb"></div>
     <button class="nxbt" id="rp-nb" onclick="rpNext()">${isLast?"Xem kết quả bài đọc →":"Câu tiếp theo →"}</button>
@@ -3069,7 +3128,7 @@ function rpRenderBody(sq){
     const ans=sq.answer||"";const maxLen=Math.max(ans.length,1);const width=`calc(${maxLen} * (1ch + 8px))`;
     const parts=(sq.prompt||"").split(/_+/);
     const sentHtml=parts.length>=2
-      ?`${esc(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">${esc(parts.slice(1).join("___"))}`
+      ?`${escU(parts[0])}<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">${escU(parts.slice(1).join("___"))}`
       :`<input class="fill-blank" id="rp-fi" maxlength="${maxLen}" style="width:${width}" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')rpCheckFill()" onbeforeinput="if(this.value.length>=${maxLen}&&this.selectionStart===this.selectionEnd&&event.inputType==='insertText')event.preventDefault();" onfocus="this.scrollLeft=0" onclick="this.scrollLeft=0" onkeyup="this.scrollLeft=0" oninput="this.value=this.value.slice(0,${maxLen});this.scrollLeft=0;">`;
     body.innerHTML=`<div class="fill-sentence">${sentHtml}</div>
       <button class="btn btn-pur" onclick="rpCheckFill()" style="margin-bottom:4px">Answer</button>`;
@@ -3099,6 +3158,10 @@ function rpRenderChips(){
   const el=document.getElementById("rp-chips");if(!el)return;
   const {subQs,current,res}=rpQuizState;
   el.innerHTML=subQs.map((_,i)=>'<button class="qn'+(i===current?' cur':(res[i]!==undefined?' done':''))+'" onclick="rpGo('+i+')">'+(i+1)+'</button>').join("");
+}
+function rpContinue(){
+  if(examMode){if(quizIdx+1<quizQueue.length)goQ(quizIdx+1);return;}
+  nextQ();
 }
 function rpGo(i){rpCapture();rpQuizState.current=i;rpRenderCurrent();}
 function rpCapture(){
@@ -3163,7 +3226,7 @@ function rpShowResult(){
   const area=document.getElementById("rp-qarea");if(!area)return;
   area.innerHTML=`<div class="rp-qblock" style="text-align:center;padding:20px">
     <div style="font-size:15px;font-weight:600;color:var(--pur-d)">✅ Bạn đã hoàn thành bài đọc</div>
-    <button class="btn btn-pur btn-block" onclick="nextQ()" style="margin-top:14px">${quizIdx+1<quizQueue.length?"Tiếp tục →":"Xem kết quả →"}</button>
+    ${(examMode&&quizIdx+1>=quizQueue.length)?"":`<button class="btn btn-pur btn-block" onclick="rpContinue()" style="margin-top:14px">${quizIdx+1<quizQueue.length?"Tiếp tục →":"Xem kết quả →"}</button>`}
   </div>`;
 }
 
@@ -3223,7 +3286,7 @@ function rpRenderDragFill(sq,body){
   const answers=(sq.answer||"").split("\n").map(x=>x.trim()).filter(Boolean);
   const wordBox=sq.opts&&sq.opts.length?shufC(sq.opts):shufC([...answers]);
   let bi=0;
-  const ph=esc(sq.prompt||"").replace(/___/g,()=>{
+  const ph=escU(sq.prompt||"").replace(/___/g,()=>{
     const i=bi++;
     return `<span class="df-blank" id="rpdfb-${i}" data-idx="${i}" ondragover="rpDfOver(event,this)" ondragleave="rpDfLeave(this)" ondrop="rpDfDrop(event,this)" onclick="rpDfClickBlank(this)"><span id="rpdfbt-${i}"></span></span>`;
   });
@@ -3345,11 +3408,14 @@ function getExamScore(user,examId){
   const row=window.CLOUD_EXAMSCORES?.find(x=>x.student===user&&x.examId===examId);
   return row||{best:0,attempts:0};
 }
-async function setExamScore(user,examId,pct){
+function fmtTime(sec){sec=Math.max(0,Math.round(sec||0));const m=Math.floor(sec/60),r=sec%60;return (m<10?"0":"")+m+":"+(r<10?"0":"")+r;}
+async function setExamScore(user,examId,pct,timeSec){
   const existing=window.CLOUD_EXAMSCORES?.find(x=>x.student===user&&x.examId===examId);
-  const best=Math.max(existing?.best||0,pct);
+  let best=existing?.best||0,bestTime=existing?.bestTime??null;
+  if(!existing||pct>best||(pct===best&&(bestTime==null||timeSec<bestTime))){best=pct;bestTime=timeSec;}
   const attempts=(existing?.attempts||0)+1;
-  const data={student:user,examId,best,attempts,last:pct,lastDate:Date.now()};
+  const history=[...(existing?.history||[]),{pct,timeSec,date:Date.now()}].slice(-30);
+  const data={student:user,examId,best,bestTime,attempts,last:pct,lastTime:timeSec,lastDate:Date.now(),history};
   if(existing&&existing.firestoreId){
     await window.fb.updateDoc(window.fb.doc(window.db,"examScores",existing.firestoreId),data);
   }else{
@@ -3392,7 +3458,7 @@ function renderExamList(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <div>
           <div style="font-weight:600;font-size:14px">${esc(e.title)}</div>
-          <div style="font-size:12px;color:var(--tx3);margin-top:3px">${qCount} câu · ⏱ ${e.durationMin||30} phút${sc.attempts?` · Đã làm ${sc.attempts} lần · Cao nhất <strong style="color:var(--teal)">${sc.best}%</strong>`:""}</div>
+          <div style="font-size:12px;color:var(--tx3);margin-top:3px">${qCount} câu · ⏱ ${e.durationMin||30} phút${sc.attempts?` · Đã làm ${sc.attempts} lần · Cao nhất <strong style="color:var(--teal)">${sc.best}%</strong>${sc.bestTime!=null?" ("+fmtTime(sc.bestTime)+")":""}${sc.lastTime!=null?" · Lần gần nhất "+sc.last+"% ("+fmtTime(sc.lastTime)+")":""}`:""}</div>
         </div>
         <button class="btn btn-pur btn-sm" onclick="startExam('${e.id}')" ${qCount?"":"disabled"}>Bắt đầu →</button>
       </div>
@@ -3410,14 +3476,14 @@ function startExam(examId){
   document.getElementById("quiz-body").innerHTML=""; // avoid duplicate #fb/#nb ids with practice screen
   document.body.classList.add("exammode");
   quizQueue=shuffled(pool);quizIdx=0;quizCorrect=0;quizAns=[];quizSaved={};shufCache={};
-  examDurationSec=(exam.durationMin||30)*60;examSecondsLeft=examDurationSec;
+  examDurationSec=(exam.durationMin||30)*60;examSecondsLeft=examDurationSec;examStartAt=Date.now();
   document.getElementById("exam-quiz-title").textContent=exam.title;
   showScr("s-examquiz");
   examRenderQ();
   examTickDisplay();
   if(examTimerId)clearInterval(examTimerId);
   examTimerId=setInterval(()=>{
-    examSecondsLeft--;
+    examSecondsLeft=Math.max(0,Math.ceil((examStartAt+examDurationSec*1000-Date.now())/1000));
     examTickDisplay();
     if(examSecondsLeft<=0){clearInterval(examTimerId);{const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}examShowResult(true);}
   },1000);
@@ -3459,21 +3525,23 @@ function examRenderQ(){
   else body.innerHTML=renderMCQ(q);
   restoreCurrent(q);
   // Exam mode: no instant reveal — auto-advance as soon as the answer is submitted (Next btn gets .on)
+  const wasAnswered=quizAns[quizIdx]!==undefined;
   const nb=document.getElementById("nb");
   if(nb){
     const mo=new MutationObserver(()=>{
-      if(nb.classList.contains("on")){mo.disconnect();const at=quizIdx;setTimeout(()=>{if(examMode&&quizIdx===at)nextQ();},400);}
+      if(nb.classList.contains("on")){mo.disconnect();const at=quizIdx;setTimeout(()=>{if(examMode&&quizIdx===at&&!wasAnswered&&at+1<quizQueue.length&&quizAns[at+1]===undefined)goQ(at+1);},400);}
     });
     mo.observe(nb,{attributes:true,attributeFilter:["class"]});
   }
 }
 async function examShowResult(timeUp){
+  if(!examMode)return;
   quizCorrect=quizAns.filter(Boolean).length;
   if(examTimerId){clearInterval(examTimerId);examTimerId=null;}
   examMode=false;
   document.body.classList.remove("exammode");
   const total=quizQueue.length;const pct=total?Math.round(quizCorrect/total*100):0;
-  if(currentUser)await setExamScore(currentUser,examIdG,pct);
+  const timeSec=timeUp?examDurationSec:Math.min(examDurationSec,Math.round((Date.now()-examStartAt)/1000));
   document.getElementById("ex-pfill").style.width="100%";
   document.querySelector("#s-examquiz .qnav").style.display="none";
   const stars=pct>=90?"⭐⭐⭐":pct>=70?"⭐⭐":"⭐";
@@ -3481,14 +3549,26 @@ async function examShowResult(timeUp){
   document.getElementById("exam-body").innerHTML=`<div class="res-wrap">
     ${timeUp?'<div style="color:var(--red);font-weight:600;margin-bottom:8px">⏰ Hết giờ! Bài thi đã tự nộp.</div>':""}
     <div class="res-pct">${pct}%</div>
-    <div class="res-lbl">${quizCorrect} / ${total} câu đúng — ${examTitleG}</div>
+    <div class="res-lbl">${quizCorrect} / ${total} câu đúng — ${esc(examTitleG)}</div>
+    <div class="res-lbl" style="margin-top:6px">⏱ Thời gian làm bài: <strong>${fmtTime(timeSec)}</strong> / ${fmtTime(examDurationSec)}</div>
     <div class="res-stars">${stars}</div>
-    <div style="color:var(--tx2);font-size:14px;margin-bottom:20px">${msg}</div>
+    <div style="color:var(--tx2);font-size:14px;margin-bottom:8px">${msg}</div>
+    <div id="ex-save-note" style="font-size:12px;color:var(--tx3);margin-bottom:14px"></div>
     <div class="btn-row" style="justify-content:center">
       <button class="btn btn-pur" onclick="startExam('${examIdG}')">Làm lại</button>
       <button class="btn" onclick="exitExam()">Về trang chủ</button>
     </div>
   </div>`;
+  const note=document.getElementById("ex-save-note");
+  if(currentUser){
+    try{
+      await setExamScore(currentUser,examIdG,pct,timeSec);
+      if(note)note.textContent="✓ Đã lưu điểm và thời gian làm bài";
+    }catch(err){
+      console.error("setExamScore error:",err);
+      if(note){note.style.color="var(--red)";note.textContent="⚠️ Chưa lưu được kết quả lên hệ thống. Hãy báo giáo viên.";}
+    }
+  }
 }
 function exitExam(){
   if(examMode&&!confirm("Thoát bây giờ sẽ không lưu kết quả bài thi. Bạn chắc chứ?"))return;
@@ -3773,6 +3853,7 @@ document.addEventListener("click",e=>{if(e.target.classList.contains("modal-bg")
 
 // ══════ UTILS ══════
 function shuffled(a){return [...a].sort(()=>Math.random()-.5);}
+function escU(s){return esc(s).replace(/&lt;u&gt;/g,"<u>").replace(/&lt;\/u&gt;/g,"</u>");}
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 // Safely embed a JS string literal inside an HTML onclick="..." attribute.
 // Returns a JSON-stringified, HTML-attribute-escaped literal (e.g. for s="Who's" -> "Who&#39;s" -> decoded back to "Who's" as valid JS).
