@@ -300,6 +300,7 @@ textarea.inp{resize:vertical;min-height:70px}
 
 .qnav{display:flex;justify-content:space-between;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid var(--bord)}
 .qnav .btn:disabled{opacity:.4;cursor:default}
+.picked{background:var(--pur-l)!important;border-color:var(--pur)!important;color:var(--pur-d)!important}
 /* responsive */
 @media(max-width:500px){
   .opts,.phonopts,.tfopts,.img-opts,.img-pick-opts{grid-template-columns:1fr}
@@ -2339,7 +2340,7 @@ function startTopicQuiz(topicId){
   quizTopicId=topicId;isMix=false;
   document.getElementById("quiz-title").textContent=topic.emoji+" "+topic.name;
   quizQueue=shuffled(pool).slice(0,20);
-  quizIdx=0;quizCorrect=0;quizAns=[];
+  quizIdx=0;quizCorrect=0;quizAns=[];quizSaved={};shufCache={};
   showScr("s-quiz");renderQ();
 }
 function selMix(n,el){document.querySelectorAll(".mcard").forEach(c=>c.classList.remove("sel"));el.classList.add("sel");mixCount=n;}
@@ -2364,7 +2365,7 @@ function startMix(){
   isMix=true;quizTopicId="mix";
   document.getElementById("quiz-title").textContent="🔀 Ôn tổng hợp";
   quizQueue=shuffled(pool).slice(0,mixCount);
-  quizIdx=0;quizCorrect=0;quizAns=[];
+  quizIdx=0;quizCorrect=0;quizAns=[];quizSaved={};shufCache={};
   showScr("s-quiz");renderQ();
 }
 function exitQuiz(){window.speechSynthesis&&window.speechSynthesis.cancel();showScr("s-main");if(isMix){sTab("mix");}else{renderTopicGrid();}}
@@ -2374,14 +2375,14 @@ function renderQ(){
   if(quizIdx>=total){showResult();return;}
   document.querySelector("#s-quiz .qnav").style.display="";
   const q=quizQueue[quizIdx];
-  updateNavBtns();
+  updateNavBtns();shufSlot=String(quizIdx);
   document.getElementById("q-ctr").textContent=(quizIdx+1)+" / "+total;
   document.getElementById("qpfill").style.width=(quizIdx/total*100)+"%";
   const labels={mcq:"Từ vựng",fill:"Điền từ",arrange:"Sắp xếp câu",phonics:"Phiên âm","err-correct":"Sửa lỗi sai",listen:"Bài nghe","listen-tf":"Nghe Đúng/Sai","listen-fill":"Nghe Điền từ",tf:"Đúng / Sai",odd:"Odd one out","img-mcq":"Chọn ảnh","read-img":"Đọc + Ảnh","listen-img":"Nghe + Ảnh","pic-mcq":"Nhìn ảnh chọn chữ","mcq-multi":"Chọn nhiều đáp án","drag-fill":"Kéo thả từ","listen-multi":"Nghe + Chọn nhiều","img-fill":"Nhìn ảnh điền từ"};
   const body=document.getElementById("quiz-body");
   if(q.type==="mcq"||q.type==="odd")body.innerHTML=renderMCQ(q);
   else if(q.type==="fill"){body.innerHTML=renderFill(q);setTimeout(()=>{const fi=document.getElementById("fi");if(fi)fi.focus();},50);}
-  else if(q.type==="arrange"){body.innerHTML=renderArrange(q);arrangeState={placed:[],bank:shuffled(q.answer.split(" "))||[]};renderArrState();}
+  else if(q.type==="arrange"){body.innerHTML=renderArrange(q);arrangeState={placed:[],bank:shufC(q.answer.split(" "))||[]};renderArrState();}
   else if(q.type==="phonics"||q.type==="err-correct"){body.innerHTML=renderPhon(q);document.querySelectorAll(".phobt").forEach(b=>{const m=b.getAttribute("onclick").match(/checkPhon\(this,(.+?),(.+?)\)/);if(m){try{b._phVal=JSON.parse(m[1]);}catch(e){}}});}
   else if(q.type==="listen")body.innerHTML=renderListen(q);
   else if(q.type==="listen-tf")body.innerHTML=renderListenTF(q);
@@ -2397,16 +2398,34 @@ function renderQ(){
   else if(q.type==="img-fill"){body.innerHTML=renderImgFill(q);setTimeout(()=>{const fi=document.getElementById("fi");if(fi)fi.focus();},50);}
   else if(q.type==="reading-passage"){body.innerHTML=renderReadingPassage(q);rpQuizInit(q);}
   else body.innerHTML=renderMCQ(q);
+  restoreCurrent(q);
 }
-function nextQ(){quizIdx++;if(examMode){examRenderQ();}else{renderQ();}}
+function nextQ(){
+  {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
+  quizIdx++;if(examMode){examRenderQ();}else{renderQ();}
+}
+function inRp(){
+  const q=quizQueue[quizIdx];
+  return !!(q&&q.type==="reading-passage"&&rpQuizState&&rpQuizState.subQs&&rpQuizState.subQs.length);
+}
 function prevQ(){
+  if(inRp()&&rpQuizState.current>0){
+    if(rpQuizState.current<rpQuizState.subQs.length)rpCapture();
+    rpQuizState.current=Math.min(rpQuizState.current,rpQuizState.subQs.length)-1;
+    rpRenderCurrent();return;
+  }
   if(quizIdx<=0)return;
+  {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
   window.speechSynthesis&&window.speechSynthesis.cancel();
   quizIdx--;
   if(examMode){examRenderQ();}else{renderQ();}
 }
 function skipQ(){
+  if(inRp()&&rpQuizState.current<rpQuizState.subQs.length-1){
+    rpCapture();rpQuizState.current++;rpRenderCurrent();return;
+  }
   const total=quizQueue.length;
+  {const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}
   if(quizIdx+1>=total){
     let left=0;for(let i=0;i<total;i++){if(quizAns[i]===undefined)left++;}
     if(left>0&&!confirm("Còn "+left+" câu chưa làm. Bạn vẫn muốn nộp bài?"))return;
@@ -2415,24 +2434,77 @@ function skipQ(){
   nextQ();
 }
 function updateNavBtns(){
-  const last=quizIdx+1>=quizQueue.length;
+  const rp=inRp();
+  const last=quizIdx+1>=quizQueue.length&&(!rp||rpQuizState.current>=rpQuizState.subQs.length-1);
   ["q","ex"].forEach(p=>{
     const pv=document.getElementById(p+"-prev"),sk=document.getElementById(p+"-skip");
-    if(pv)pv.disabled=quizIdx<=0;
+    if(pv)pv.disabled=quizIdx<=0&&!(rp&&rpQuizState.current>0);
     if(sk)sk.textContent=last?"Nộp bài ✓":"Câu sau →";
   });
+}
+function dfIsCorrect(words,answers,anyOrder){
+  const f=words.map(w=>String(w).trim().toLowerCase()),a=answers.map(x=>x.trim().toLowerCase());
+  if(anyOrder){const pool=[...a];return f.every(w=>{const i=pool.indexOf(w);if(i>-1){pool.splice(i,1);return true;}return false;});}
+  return f.every((w,i)=>w===a[i]);
+}
+// Called when leaving a question: keep what the student typed/picked and grade it silently
+function gradeLeave(q){
+  const t=q.type;
+  if(t==="fill"||t==="listen-fill"||t==="img-fill"){
+    const fi=document.getElementById("fi");
+    if(fi&&!fi.disabled){svSet({v:fi.value});if(fi.value.trim()!=="")recordAns(fi.value.trim().toLowerCase()===q.answer.toLowerCase());}
+  }else if(t==="arrange"){
+    svSet({placed:[...arrangeState.placed],bank:[...arrangeState.bank]});
+    if(arrangeState.placed.length)recordAns(arrangeState.placed.join(" ").trim()===q.answer.trim());
+  }else if(t==="mcq-multi"||t==="listen-multi"){
+    const sel=[...document.querySelectorAll(".obt-multi.sel")].map(b=>b.dataset.v);
+    svSet({sel});
+    if(sel.length){const cs=(q.answer||"").split("|").map(x=>x.trim()).filter(Boolean);recordAns(sel.length===cs.length&&cs.every(x=>sel.includes(x)));}
+  }else if(t==="drag-fill"){
+    const words=dfState.blanks.map(b=>b?b.word:null);
+    svSet({blanks:words});
+    if(words.length&&words.every(w=>w!=null))recordAns(dfIsCorrect(words,dfState.answers,dfState.anyOrder));
+  }else if(t==="reading-passage"){
+    if(!rpQuizState.subQs.length)return;
+    rpCapture();
+    const done=rpQuizState.res.filter(x=>x!==undefined).length;
+    if(done>0){const pct=Math.round(rpQuizState.correct/rpQuizState.subQs.length*100);recordAns(pct>=70);}
+    svSet({rp:{current:rpQuizState.current,res:rpQuizState.res,saved:rpQuizState.saved}});
+  }
+}
+// Called after a question is rendered: put back what the student picked/typed before
+function restoreCurrent(q){
+  const sv=svGet();if(!sv)return;
+  const t=q.type;
+  if(t==="fill"||t==="listen-fill"||t==="img-fill"){
+    const fi=document.getElementById("fi");if(fi&&sv.v)fi.value=sv.v;
+  }else if(t==="arrange"){
+    if(sv.placed){arrangeState={placed:[...sv.placed],bank:[...sv.bank]};renderArrState();}
+  }else if(t==="mcq-multi"||t==="listen-multi"){
+    if(sv.sel)document.querySelectorAll(".obt-multi").forEach(b=>{if(sv.sel.includes(b.dataset.v)){b.classList.add("sel");const c=b.querySelector(".chk");if(c)c.textContent="✓";}});
+  }else if(t==="drag-fill"){
+    if(sv.blanks)sv.blanks.forEach((w,i)=>{
+      if(w==null)return;
+      const blank=document.getElementById("dfb-"+i);
+      const chip=[...document.querySelectorAll(".df-chip")].find(c=>c.dataset.word===w&&!c.classList.contains("used"));
+      if(blank&&chip)dfPlaceWord(chip,blank);
+    });
+  }else if(t!=="reading-passage"){
+    if(sv.v!=null)document.querySelectorAll("[data-v]").forEach(b=>{if(b.dataset.v===sv.v)b.classList.add("picked");});
+  }
 }
 
 // Render helpers
 function renderMCQ(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([q.answer]);
+  const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
   const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox">${promptHtml}<span class="qsub">${q.extra?esc(q.extra):""}</span></div>
-    <div class="opts">${opts.map(o=>`<button class="obt" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
+    <div class="opts">${opts.map(o=>`<button class="obt" data-v="${esc(o)}" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
 function checkMCQ(btn,c,a){
+  clearPicked();svSet({v:c});
   document.querySelectorAll(".obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   if(!ok)document.querySelectorAll(".obt").forEach(b=>{if(b.textContent.trim()===a)b.classList.add("ok");});
@@ -2468,6 +2540,7 @@ function renderFill(q){
 function checkFill(){
   const fi=document.getElementById("fi");if(!fi||fi.disabled)return;
   const q=quizQueue[quizIdx];const ok=fi.value.trim().toLowerCase()===q.answer.toLowerCase();
+  svSet({v:fi.value});
   fi.disabled=true;
   if(ok){fi.value=q.answer;fi.classList.add("ok");}
   else{fi.classList.add("bad");setTimeout(()=>{if(!fi.disabled)return;fi.value=q.answer;fi.style.color="var(--teal)";},800);}
@@ -2514,15 +2587,16 @@ function wrapUnderline(fieldId){
   el.focus();
 }
 function renderPhon(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([q.answer]);
+  const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
   // Allow <u> tags only — sanitize other HTML
   function safeHtml(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/&lt;u&gt;/g,"<u>").replace(/&lt;\/u&gt;/g,"</u>");}
   return `<div class="qbox">${safeHtml(q.prompt)}</div>
-    <div class="phonopts">${opts.map(o=>`<button class="phobt" onclick="checkPhon(this,${escJs(o)},${escJs(q.answer)})">${safeHtml(o)}</button>`).join("")}</div>
+    <div class="phonopts">${opts.map(o=>`<button class="phobt" data-v="${esc(o)}" onclick="checkPhon(this,${escJs(o)},${escJs(q.answer)})">${safeHtml(o)}</button>`).join("")}</div>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
 function checkPhon(btn,c,a){
+  clearPicked();svSet({v:c});
   document.querySelectorAll(".phobt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   if(!ok)document.querySelectorAll(".phobt").forEach(b=>{if(b._phVal===a)b.classList.add("ok");});
@@ -2531,8 +2605,8 @@ function checkPhon(btn,c,a){
 }
 function renderListen(q){
   const opts=q.opts&&q.opts.length
-    ? shuffled(q.opts)
-    : shuffled([q.answer]);
+    ? shufC(q.opts)
+    : shufC([q.answer]);
 
   return `<div class="lbox">
     <p style="font-size:13px;color:var(--tx2);margin-bottom:12px">
@@ -2553,7 +2627,7 @@ function renderListen(q){
   <div class="opts">
     ${opts.map(o=>`
       <button
-        class="obt"
+        class="obt" data-v="${esc(o)}"
         onclick="checkMCQ(
           this,
           ${escJs(o)},
@@ -2626,13 +2700,14 @@ function renderTF(q){
   const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox" style="font-size:16px">${promptHtml}<span class="qsub">${q.extra?esc(q.extra):""}</span></div>
     <div class="tfopts">
-      <button class="tfbt" style="color:var(--teal)" onclick="checkTF(this,'True',${escJs(q.answer)})">✓ True</button>
-      <button class="tfbt" style="color:var(--red)" onclick="checkTF(this,'False',${escJs(q.answer)})">✗ False</button>
+      <button class="tfbt" data-v="True" style="color:var(--teal)" onclick="checkTF(this,'True',${escJs(q.answer)})">✓ True</button>
+      <button class="tfbt" data-v="False" style="color:var(--red)" onclick="checkTF(this,'False',${escJs(q.answer)})">✗ False</button>
     </div>
     <div class="fb" id="fb"></div>
     <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
 function checkTF(btn,c,a){
+  clearPicked();svSet({v:c});
   document.querySelectorAll(".tfbt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   showFB(ok,"Đáp án: "+a);
@@ -2648,8 +2723,8 @@ function renderListenTF(q){
     </button>
   </div>
   <div class="tfopts">
-    <button class="tfbt" style="color:var(--teal)" onclick="checkTF(this,'True',${escJs(q.answer)})">✓ True</button>
-    <button class="tfbt" style="color:var(--red)" onclick="checkTF(this,'False',${escJs(q.answer)})">✗ False</button>
+    <button class="tfbt" data-v="True" style="color:var(--teal)" onclick="checkTF(this,'True',${escJs(q.answer)})">✓ True</button>
+    <button class="tfbt" data-v="False" style="color:var(--red)" onclick="checkTF(this,'False',${escJs(q.answer)})">✗ False</button>
   </div>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
@@ -2682,16 +2757,17 @@ function renderListenFill(q){
 
 // ══ Image MCQ ══
 function renderImgMCQ(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):[];
+  const opts=q.opts&&q.opts.length?shufC(q.opts):[];
   const correctLabel=q.extra||q.answer;
   return `<div class="qbox">${esc(q.prompt)}</div>
-  <div class="img-opts">${opts.map(o=>`<button class="img-obt" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
+  <div class="img-opts">${opts.map(o=>`<button class="img-obt" data-v="${esc(o)}" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
     <img src="${esc(o)}" alt="" onerror="this.style.display='none'">
   </button>`).join("")}</div>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
 function checkImgMCQ(btn,c,a,label){
+  clearPicked();svSet({v:c});
   document.querySelectorAll(".img-obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   if(!ok)document.querySelectorAll(".img-obt").forEach(b=>{if(b.onclick&&b.getAttribute("onclick")&&b.getAttribute("onclick").includes("'"+a.replace(/'/g,"&#39;")+"'"))b.classList.add("ok");});
@@ -2701,10 +2777,10 @@ function checkImgMCQ(btn,c,a,label){
 
 // ══ Read + Image ══
 function renderReadImg(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):[];
+  const opts=q.opts&&q.opts.length?shufC(q.opts):[];
   const correctLabel=q.extra||q.answer;
   return `<div class="qbox">${esc(q.prompt)}</div>
-  <div class="img-opts">${opts.map(o=>`<button class="img-obt" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
+  <div class="img-opts">${opts.map(o=>`<button class="img-obt" data-v="${esc(o)}" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
     <img src="${esc(o)}" alt="" onerror="this.style.display='none'">
   </button>`).join("")}</div>
   <div class="fb" id="fb"></div>
@@ -2713,7 +2789,7 @@ function renderReadImg(q){
 
 // ══ Listen + Image ══
 function renderListenImg(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):[];
+  const opts=q.opts&&q.opts.length?shufC(q.opts):[];
   const correctLabel=q.extra||q.answer;
   return `<div class="lbox">
     <button class="lbtn" style="margin-top:10px" onclick="playQuestionAudio(${escJs(q.audioUrl||"")},'')">
@@ -2721,7 +2797,7 @@ function renderListenImg(q){
       Nghe
     </button>
   </div>
-  <div class="img-opts">${opts.map(o=>`<button class="img-obt" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
+  <div class="img-opts">${opts.map(o=>`<button class="img-obt" data-v="${esc(o)}" onclick="checkImgMCQ(this,${escJs(o)},${escJs(q.answer)},${escJs(correctLabel)})">
     <img src="${esc(o)}" alt="" onerror="this.style.display='none'">
   </button>`).join("")}</div>
   <div class="fb" id="fb"></div>
@@ -2730,11 +2806,11 @@ function renderListenImg(q){
 
 // ══ Picture MCQ (image prompt, text choices) ══
 function renderPicMCQ(q){
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([q.answer]);
+  const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([q.answer]);
   const imgUrl=q.audioUrl||"";
   return `${imgUrl?`<div style="text-align:center;margin-bottom:14px"><img src="${esc(imgUrl)}" alt="" style="max-width:100%;max-height:240px;border-radius:var(--r);border:1.5px solid var(--bord);object-fit:contain" onerror="this.style.display='none'"></div>`:""}
   ${q.prompt?`<div class="qbox">${esc(q.prompt)}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>`:""}
-  <div class="opts">${opts.map(o=>`<button class="obt" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
+  <div class="opts">${opts.map(o=>`<button class="obt" data-v="${esc(o)}" onclick="checkMCQ(this,${escJs(o)},${escJs(q.answer)})">${esc(o)}</button>`).join("")}</div>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
 }
@@ -2763,7 +2839,7 @@ function renderImgFill(q){
 // ══ Listen Multi ══
 function renderListenMulti(q){
   const correctSet=new Set((q.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([...correctSet]);
+  const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([...correctSet]);
   return `<div class="lbox">
     <p style="font-size:13px;color:var(--tx2);margin:8px 0 12px">${esc(q.prompt||"Nghe và chọn tất cả đáp án đúng")}</p>
     <button class="lbtn" onclick="playQuestionAudio(${escJs(q.audioUrl||"")},'')">
@@ -2772,7 +2848,7 @@ function renderListenMulti(q){
     </button>
   </div>
   <div class="multi-hint">Chọn tất cả đáp án đúng (có thể chọn nhiều)</div>
-  <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
+  <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
   <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Kiểm tra</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
@@ -2781,11 +2857,11 @@ function renderListenMulti(q){
 // ══ MCQ Multi ══
 function renderMCQMulti(q){
   const correctSet=new Set((q.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
-  const opts=q.opts&&q.opts.length?shuffled(q.opts):shuffled([...correctSet]);
+  const opts=q.opts&&q.opts.length?shufC(q.opts):shufC([...correctSet]);
   const promptHtml=esc(q.prompt).replace(/\n/g,"<br>");
   return `<div class="qbox">${promptHtml}${q.extra?`<span class="qsub">${esc(q.extra)}</span>`:""}</div>
   <div class="multi-hint">Chọn tất cả đáp án đúng (có thể chọn nhiều)</div>
-  <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
+  <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
   <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="checkMCQMulti(${escJs(q.answer)})">Kiểm tra</button>
   <div class="fb" id="fb"></div>
   <button class="nxbt" id="nb" onclick="nextQ()"></button>`;
@@ -2821,7 +2897,7 @@ function checkMCQMulti(answerStr){
 let dfState={blanks:[],wordChosen:[]};
 function renderDragFill(q){
   const answers=(q.answer||"").split("\n").map(x=>x.trim()).filter(Boolean);
-  const wordBox=q.opts&&q.opts.length?shuffled(q.opts):shuffled([...answers]);
+  const wordBox=q.opts&&q.opts.length?shufC(q.opts):shufC([...answers]);
   // Build passage HTML — replace each ___ with a drop zone, all same width
   let blankIdx=0;
   const passageHtml=esc(q.prompt).replace(/___/g,()=>{
@@ -2938,7 +3014,10 @@ function renderReadingPassage(q){
 }
 
 function rpQuizInit(q){
-  rpQuizState={subQs:q.subQuestions||[],current:0,correct:0};
+  const sv=svGet();const prev=sv&&sv.rp;
+  const len=(q.subQuestions||[]).length;
+  rpQuizState={subQs:q.subQuestions||[],current:prev?Math.min(prev.current,Math.max(len-1,0)):0,correct:0,res:prev?prev.res:[],saved:prev?prev.saved:[]};
+  rpQuizState.correct=rpQuizState.res.filter(Boolean).length;
   rpDfDragging=null;rpDfSelectedChip=null;
   rpRenderCurrent();
 }
@@ -2948,7 +3027,7 @@ function rpRenderCurrent(){
   const pe=document.getElementById("rp-prog");const se=document.getElementById("rp-score");
   if(pe)pe.innerHTML=`Câu <strong>${current+1}</strong> / ${subQs.length}`;
   if(se)se.textContent="✓ "+correct;
-  if(current>=subQs.length){rpShowResult();return;}
+  if(current>=subQs.length){rpShowResult();updateNavBtns();return;}
   const sq=subQs[current];
   const area=document.getElementById("rp-qarea");if(!area)return;
   const isLast=current===subQs.length-1;
@@ -2959,19 +3038,22 @@ function rpRenderCurrent(){
     <button class="nxbt" id="rp-nb" onclick="rpNext()">${isLast?"Xem kết quả bài đọc →":"Câu tiếp theo →"}</button>
   </div>`;
   rpRenderBody(sq);
+  rpRestore(sq);
+  updateNavBtns();
 }
 
 function rpRenderBody(sq){
   const body=document.getElementById("rp-qbody");if(!body)return;
+  shufSlot=quizIdx+":"+rpQuizState.current;
   const t=sq.type;
   if(t==="mcq"){
-    const opts=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([sq.answer]);
-    body.innerHTML=`<div class="opts">${opts.map(o=>`<button class="obt" onclick="rpCheckMCQ(this,${escJs(o)},${escJs(sq.answer)})">${esc(o)}</button>`).join("")}</div>`;
+    const opts=sq.opts&&sq.opts.length?shufC(sq.opts):shufC([sq.answer]);
+    body.innerHTML=`<div class="opts">${opts.map(o=>`<button class="obt" data-v="${esc(o)}" onclick="rpCheckMCQ(this,${escJs(o)},${escJs(sq.answer)})">${esc(o)}</button>`).join("")}</div>`;
   }else if(t==="mcq-multi"){
     const correctSet=new Set((sq.answer||"").split("|").map(x=>x.trim()).filter(Boolean));
-    const opts=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([...correctSet]);
+    const opts=sq.opts&&sq.opts.length?shufC(sq.opts):shufC([...correctSet]);
     body.innerHTML=`<div class="multi-hint">Chọn tất cả đáp án đúng</div>
-      <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
+      <div class="opts" style="grid-template-columns:1fr">${opts.map(o=>`<button class="obt-multi" data-v="${esc(o)}" onclick="toggleMulti(this,${escJs(o)})"><span class="chk"></span>${esc(o)}</button>`).join("")}</div>
       <button class="btn btn-pur" style="margin-top:10px;width:100%" onclick="rpCheckMulti(${escJs(sq.answer)})">Kiểm tra</button>`;
   }else if(t==="fill"){
     const ans=sq.answer||"";const maxLen=Math.max(ans.length,1);const width=`calc(${maxLen} * (1ch + 8px))`;
@@ -2984,11 +3066,11 @@ function rpRenderBody(sq){
     setTimeout(()=>{const fi=document.getElementById("rp-fi");if(fi)fi.focus();},50);
   }else if(t==="tf"){
     body.innerHTML=`<div class="tfopts">
-      <button class="tfbt" style="color:var(--teal)" onclick="rpCheckTF(this,'True',${escJs(sq.answer)})">✓ True</button>
-      <button class="tfbt" style="color:var(--red)" onclick="rpCheckTF(this,'False',${escJs(sq.answer)})">✗ False</button>
+      <button class="tfbt" data-v="True" style="color:var(--teal)" onclick="rpCheckTF(this,'True',${escJs(sq.answer)})">✓ True</button>
+      <button class="tfbt" data-v="False" style="color:var(--red)" onclick="rpCheckTF(this,'False',${escJs(sq.answer)})">✗ False</button>
     </div>`;
   }else if(t==="arrange"){
-    rpArrangeState={placed:[],bank:shuffled((sq.answer||"").split(" ").filter(Boolean))};
+    rpArrangeState={placed:[],bank:shufC((sq.answer||"").split(" ").filter(Boolean))};
     body.innerHTML=`<div class="hint-lbl">Nhấn từ để đưa vào câu</div>
       <div style="font-size:12px;color:var(--tx2);margin-bottom:4px">Câu của bạn:</div>
       <div class="aans" id="rp-aans"></div>
@@ -3003,15 +3085,56 @@ function rpRenderBody(sq){
   }
 }
 
+function rpCapture(){
+  const {subQs,current}=rpQuizState;if(current>=subQs.length)return;
+  const sq=subQs[current];const t=sq.type;const R=rpQuizState.res;
+  if(t==="fill"){
+    const fi=document.getElementById("rp-fi");
+    if(fi&&!fi.disabled){rpQuizState.saved[current]={v:fi.value};if(fi.value.trim()!=="")R[current]=fi.value.trim().toLowerCase()===sq.answer.toLowerCase();}
+  }else if(t==="arrange"){
+    rpQuizState.saved[current]={placed:[...rpArrangeState.placed],bank:[...rpArrangeState.bank]};
+    if(rpArrangeState.placed.length)R[current]=rpArrangeState.placed.join(" ").trim()===(sq.answer||"").trim();
+  }else if(t==="mcq-multi"){
+    const sel=[...document.querySelectorAll("#rp-qblock .obt-multi")].filter(b=>b.classList.contains("sel")).map(b=>b.dataset.v);
+    rpQuizState.saved[current]={sel};
+    if(sel.length){const cs=(sq.answer||"").split("|").map(x=>x.trim()).filter(Boolean);R[current]=sel.length===cs.length&&cs.every(x=>sel.includes(x));}
+  }else if(t==="drag-fill"){
+    const words=rpDfState.blanks.map(b=>b?b.word:null);
+    rpQuizState.saved[current]={blanks:words};
+    if(words.length&&words.every(w=>w!=null))R[current]=dfIsCorrect(words,rpDfState.answers,rpDfState.anyOrder);
+  }
+  rpQuizState.correct=R.filter(Boolean).length;
+}
+function rpRestore(sq){
+  const sv=rpQuizState.saved[rpQuizState.current];if(!sv)return;
+  const t=sq.type;
+  if(t==="mcq"||t==="tf"){
+    if(sv.v!=null)document.querySelectorAll("#rp-qblock [data-v]").forEach(b=>{if(b.dataset.v===sv.v)b.classList.add("picked");});
+  }else if(t==="fill"){
+    const fi=document.getElementById("rp-fi");if(fi&&sv.v)fi.value=sv.v;
+  }else if(t==="arrange"){
+    if(sv.placed){rpArrangeState={placed:[...sv.placed],bank:[...sv.bank]};rpRenderArr();}
+  }else if(t==="mcq-multi"){
+    if(sv.sel)document.querySelectorAll("#rp-qblock .obt-multi").forEach(b=>{if(sv.sel.includes(b.dataset.v)){b.classList.add("sel");const c=b.querySelector(".chk");if(c)c.textContent="✓";}});
+  }else if(t==="drag-fill"){
+    if(sv.blanks)sv.blanks.forEach((w,i)=>{
+      if(w==null)return;
+      const blank=document.getElementById("rpdfb-"+i);
+      const chip=[...document.querySelectorAll("#rp-qblock .df-chip")].find(c=>c.dataset.word===w&&!c.classList.contains("used"));
+      if(blank&&chip)rpDfPlace(chip,blank);
+    });
+  }
+}
 function rpShowFB(ok,ans){
   const fb=document.getElementById("rp-fb");if(!fb)return;
   fb.className="fb on "+(ok?"ok":"bad");
   fb.textContent=ok?"🎉 Chính xác!":"❌ Sai! Đáp án: "+ans;
   const nb=document.getElementById("rp-nb");if(nb)nb.classList.add("on");
-  if(ok)rpQuizState.correct++;
+  rpQuizState.res[rpQuizState.current]=!!ok;rpQuizState.correct=rpQuizState.res.filter(Boolean).length;
 }
 
 function rpNext(){
+  rpCapture();
   rpQuizState.current++;
   rpRenderCurrent();
   setTimeout(()=>{const a=document.getElementById("rp-qarea");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},60);
@@ -3029,6 +3152,7 @@ function rpShowResult(){
 }
 
 function rpCheckMCQ(btn,c,a){
+  clearPicked();rpQuizState.saved[rpQuizState.current]={v:c};
   document.querySelectorAll("#rp-qblock .obt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   if(!ok)document.querySelectorAll("#rp-qblock .obt").forEach(b=>{if(b.textContent.trim()===a)b.classList.add("ok");});
@@ -3038,12 +3162,14 @@ function rpCheckFill(){
   const fi=document.getElementById("rp-fi");if(!fi||fi.disabled)return;
   const sq=rpQuizState.subQs[rpQuizState.current];
   const ok=fi.value.trim().toLowerCase()===sq.answer.toLowerCase();
+  rpQuizState.saved[rpQuizState.current]={v:fi.value};
   fi.disabled=true;
   if(ok){fi.value=sq.answer;fi.classList.add("ok");}
   else{fi.classList.add("bad");setTimeout(()=>{fi.value=sq.answer;fi.style.color="var(--teal)";},800);}
   rpShowFB(ok,sq.answer);
 }
 function rpCheckTF(btn,c,a){
+  clearPicked();rpQuizState.saved[rpQuizState.current]={v:c};
   document.querySelectorAll("#rp-qblock .tfbt").forEach(b=>b.disabled=true);
   const ok=c===a;btn.classList.add(ok?"ok":"bad");
   rpShowFB(ok,"Đáp án: "+a);
@@ -3080,7 +3206,7 @@ function rpCheckArr(ans){
 }
 function rpRenderDragFill(sq,body){
   const answers=(sq.answer||"").split("\n").map(x=>x.trim()).filter(Boolean);
-  const wordBox=sq.opts&&sq.opts.length?shuffled(sq.opts):shuffled([...answers]);
+  const wordBox=sq.opts&&sq.opts.length?shufC(sq.opts):shufC([...answers]);
   let bi=0;
   const ph=esc(sq.prompt||"").replace(/___/g,()=>{
     const i=bi++;
@@ -3119,7 +3245,7 @@ function rpDfPlace(chip,blank){
 }
 function rpCheckDf(){
   const {blanks,answers,anyOrder}=rpDfState;
-  if(blanks.some(b=>b==null)){rpShowFB(false,"Điền tất cả chỗ trống trước!");return;}
+  if(blanks.some(b=>b==null)){const fb=document.getElementById("rp-fb");if(fb){fb.className="fb on bad";fb.textContent="Điền tất cả chỗ trống trước!";}return;}
   const btn=document.querySelector("#rp-qblock .btn-pur");
   if(btn){if(btn.dataset.checked)return;btn.dataset.checked="1";btn.disabled=true;}
   document.querySelectorAll("#rp-qblock .df-chip").forEach(c=>{c.setAttribute("draggable","false");c.style.cursor="default";});
@@ -3144,7 +3270,11 @@ function rpCheckDf(){
   rpShowFB(allOk,answers.join(", "));
 }
 
-let quizAns=[];
+let quizAns=[],quizSaved={},shufCache={},shufSlot="0";
+function shufC(a){const k=shufSlot+"|"+JSON.stringify(a);if(!shufCache[k])shufCache[k]=shuffled(a);return [...shufCache[k]];}
+function svSet(o){const k=String(quizIdx);quizSaved[k]=Object.assign(quizSaved[k]||{},o);}
+function svGet(){return quizSaved[String(quizIdx)]||null;}
+function clearPicked(){document.querySelectorAll(".picked").forEach(x=>x.classList.remove("picked"));}
 function recordAns(ok){quizAns[quizIdx]=!!ok;quizCorrect=quizAns.filter(Boolean).length;}
 function showMsg(t){const fb=document.getElementById("fb");if(!fb)return;fb.className="fb on bad";fb.textContent=t;}
 function showFB(ok,ans){
@@ -3264,7 +3394,7 @@ function startExam(examId){
   examIdG=examId;examTitleG=exam.title;examMode=true;
   document.getElementById("quiz-body").innerHTML=""; // avoid duplicate #fb/#nb ids with practice screen
   document.body.classList.add("exammode");
-  quizQueue=shuffled(pool);quizIdx=0;quizCorrect=0;quizAns=[];
+  quizQueue=shuffled(pool);quizIdx=0;quizCorrect=0;quizAns=[];quizSaved={};shufCache={};
   examDurationSec=(exam.durationMin||30)*60;examSecondsLeft=examDurationSec;
   document.getElementById("exam-quiz-title").textContent=exam.title;
   showScr("s-examquiz");
@@ -3274,7 +3404,7 @@ function startExam(examId){
   examTimerId=setInterval(()=>{
     examSecondsLeft--;
     examTickDisplay();
-    if(examSecondsLeft<=0){clearInterval(examTimerId);examShowResult(true);}
+    if(examSecondsLeft<=0){clearInterval(examTimerId);{const q0=quizQueue[quizIdx];if(q0)gradeLeave(q0);}examShowResult(true);}
   },1000);
 }
 function examTickDisplay(){
@@ -3289,14 +3419,14 @@ function examRenderQ(){
   if(quizIdx>=total){examShowResult(false);return;}
   document.querySelector("#s-examquiz .qnav").style.display="";
   const q=quizQueue[quizIdx];
-  updateNavBtns();
+  updateNavBtns();shufSlot=String(quizIdx);
   document.getElementById("ex-ctr").textContent=(quizIdx+1)+" / "+total;
   document.getElementById("ex-pfill").style.width=(quizIdx/total*100)+"%";
   const labels={mcq:"Từ vựng",fill:"Điền từ",arrange:"Sắp xếp câu",phonics:"Phiên âm","err-correct":"Sửa lỗi sai",listen:"Bài nghe","listen-tf":"Nghe Đúng/Sai","listen-fill":"Nghe Điền từ",tf:"Đúng / Sai",odd:"Odd one out","img-mcq":"Chọn ảnh","read-img":"Đọc + Ảnh","listen-img":"Nghe + Ảnh","pic-mcq":"Nhìn ảnh chọn chữ","mcq-multi":"Chọn nhiều đáp án","drag-fill":"Kéo thả từ","listen-multi":"Nghe + Chọn nhiều","img-fill":"Nhìn ảnh điền từ","reading-passage":"Bài đọc"};
   const body=document.getElementById("exam-body");
   if(q.type==="mcq"||q.type==="odd")body.innerHTML=renderMCQ(q);
   else if(q.type==="fill"){body.innerHTML=renderFill(q);setTimeout(()=>{const fi=document.getElementById("fi");if(fi)fi.focus();},50);}
-  else if(q.type==="arrange"){body.innerHTML=renderArrange(q);arrangeState={placed:[],bank:shuffled(q.answer.split(" "))||[]};renderArrState();}
+  else if(q.type==="arrange"){body.innerHTML=renderArrange(q);arrangeState={placed:[],bank:shufC(q.answer.split(" "))||[]};renderArrState();}
   else if(q.type==="phonics"||q.type==="err-correct"){body.innerHTML=renderPhon(q);document.querySelectorAll(".phobt").forEach(b=>{const m=b.getAttribute("onclick").match(/checkPhon\(this,(.+?),(.+?)\)/);if(m){try{b._phVal=JSON.parse(m[1]);}catch(e){}}});}
   else if(q.type==="listen")body.innerHTML=renderListen(q);
   else if(q.type==="listen-tf")body.innerHTML=renderListenTF(q);
@@ -3312,6 +3442,7 @@ function examRenderQ(){
   else if(q.type==="img-fill"){body.innerHTML=renderImgFill(q);setTimeout(()=>{const fi=document.getElementById("fi");if(fi)fi.focus();},50);}
   else if(q.type==="reading-passage"){body.innerHTML=renderReadingPassage(q);rpQuizInit(q);}
   else body.innerHTML=renderMCQ(q);
+  restoreCurrent(q);
   // Exam mode: no instant reveal — auto-advance as soon as the answer is submitted (Next btn gets .on)
   const nb=document.getElementById("nb");
   if(nb){
